@@ -52,3 +52,10 @@ desktop.ini
 *.tar
 *.tar.gz
 *.sql
+
+# --------------------------------------------------------------------------
+# Claude Code
+# --------------------------------------------------------------------------
+# settings.json wird geteilt, die lokale Fassung enthält persönliche
+# Freigaben und gehört nicht ins Repository.
+.claude/settings.local.json

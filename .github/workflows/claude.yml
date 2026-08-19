@@ -1,0 +1,56 @@
+# Claude auf Zuruf.
+#
+# Läuft ausschließlich, wenn "@claude" ausdrücklich geschrieben wird – in
+# einem Kommentar oder beim Anlegen eines Issues. Ohne diese Erwähnung
+# passiert nichts, auch nicht bei neuen Pull Requests oder Kommentaren
+# anderer Leute.
+#
+# Beispiele:
+#   @claude Bitte ergänze in members.php eine Sortierung nach Geburtstag.
+#   @claude Warum schlägt der Upload bei HEIC-Dateien fehl?
+#
+# Voraussetzung: Repository-Secret CLAUDE_CODE_OAUTH_TOKEN
+# (Settings -> Secrets and variables -> Actions).
+
+name: Claude
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened]
+
+jobs:
+  claude:
+    # Ohne wörtliches "@claude" endet der Lauf sofort. Diese Bedingung ist
+    # der einzige Schutz davor, dass jeder Kommentar im Repository einen
+    # Auftrag auslöst.
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: write        # Zweige anlegen und committen
+      pull-requests: write   # Pull Requests öffnen und kommentieren
+      issues: write          # in Issues antworten
+      id-token: write
+      actions: read
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Claude ausführen
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --allowed-tools "Bash(php -l:*),Bash(node --check:*)"

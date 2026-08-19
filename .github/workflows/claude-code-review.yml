@@ -1,0 +1,77 @@
+# Prüfung eines Pull Requests – nur auf Knopfdruck.
+#
+# Läuft NICHT automatisch. Zum Starten:
+#   Actions -> "Pull Request prüfen" -> "Run workflow" -> Nummer eintragen.
+#
+# Voraussetzung: Repository-Secret CLAUDE_CODE_OAUTH_TOKEN.
+
+name: Pull Request prüfen
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Nummer des Pull Requests, z. B. 7'
+        required: true
+        type: string
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Stand des Pull Requests holen
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr checkout ${{ inputs.pr_number }}
+
+      - name: Prüfung durch Claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Prüfe Pull Request #${{ inputs.pr_number }} dieses Repositorys und
+            antworte auf Deutsch. Den Unterschied bekommst du mit
+            `gh pr diff ${{ inputs.pr_number }}`.
+
+            Die Projektregeln stehen in CLAUDE.md. Besonders achten auf:
+
+            - Werden externe Abhängigkeiten eingeführt? Composer, npm, CDN,
+              Datenbank sind ausgeschlossen.
+            - Schreibt der Code direkt in JSON-Dateien statt über
+              store_mutate()? Das erzeugt Datenverlust bei gleichzeitigen
+              Zugriffen.
+            - Fehlt csrf_field() in einem verändernden Formular oder
+              csrf_require() in dessen Verarbeitung?
+            - Wird Ausgabe ohne h() erzeugt?
+            - Fehlt require_login() oder require_admin() auf einer
+              geschützten Seite?
+            - Werden Mitgliederdaten sichtbar, die dort nicht hingehören –
+              Benutzername, Adminstatus, letzte Anmeldung auf members.php?
+            - Landen Dateien aus data/ oder uploads/ im Repository?
+            - Umlaute als "ae"/"oe"/"ue"/"ss" statt echter Zeichen?
+            - Wird serverseitiges Verkleinern von Bildern wieder eingebaut?
+              Das ist bewusst entfernt, siehe CLAUDE.md.
+
+            Schreibe das Ergebnis als einen Kommentar an den Pull Request:
+            `gh pr comment ${{ inputs.pr_number }} --body "..."`.
+
+            Melde nur, was wirklich ein Problem ist. Keine Stilfragen, keine
+            Zusammenfassung des Offensichtlichen. Findest du nichts, sag das
+            in einem Satz.
+          claude_args: |
+            --allowed-tools "Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*),Bash(php -l:*),Bash(node --check:*)"
