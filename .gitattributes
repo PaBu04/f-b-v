@@ -1,0 +1,19 @@
+# Alle Textdateien werden im Repository mit LF gespeichert – unabhängig davon,
+# unter welchem Betriebssystem gearbeitet wird. Ohne das erzeugt jeder Wechsel
+# zwischen Windows und Linux Änderungen an jeder Zeile jeder Datei.
+* text=auto eol=lf
+
+*.php  text eol=lf
+*.js   text eol=lf
+*.css  text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
+*.svg  text eol=lf
+
+# Binärdateien nicht anfassen
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary

@@ -1,0 +1,54 @@
+# --------------------------------------------------------------------------
+# Laufzeitdaten – gehören NIE ins Repository
+# --------------------------------------------------------------------------
+# users.json enthält Konten, Geburtsdaten und Passwort-Hashes.
+# push_keys.json enthält den privaten VAPID-Schlüssel.
+# push_subscriptions.json enthält Geräte-Endpunkte, throttle.json IP-Adressen.
+# Die .htaccess bleibt drin: Sie sperrt genau dieses Verzeichnis ab und muss
+# deshalb mit ausgeliefert werden.
+/data/*
+!/data/.htaccess
+
+# Hochgeladene Bilder, Vorschaubilder und Profilbilder der Mitglieder.
+/uploads/*
+!/uploads/.htaccess
+
+# --------------------------------------------------------------------------
+# Von Plesk angelegte Beispieldateien der Domain
+# --------------------------------------------------------------------------
+/css/
+/img/
+/test/
+/error_docs/
+
+# --------------------------------------------------------------------------
+# Zugangsdaten und Editor-Einstellungen
+# --------------------------------------------------------------------------
+# sftp.json der VS-Code-Erweiterung enthält das FTP-Passwort im Klartext.
+.vscode/
+.idea/
+*.code-workspace
+
+# --------------------------------------------------------------------------
+# Betriebssystem
+# --------------------------------------------------------------------------
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.DS_Store
+._*
+
+# --------------------------------------------------------------------------
+# Sicherungen, Zwischenstände, Protokolle
+# --------------------------------------------------------------------------
+*.bak
+*.orig
+*.tmp
+*.swp
+*~
+*.log
+/logs/
+*.zip
+*.tar
+*.tar.gz
+*.sql
