@@ -33,6 +33,7 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/images.php';
 require_once __DIR__ . '/likes.php';
 require_once __DIR__ . '/push.php';
+require_once __DIR__ . '/birthdays.php';
 
 date_default_timezone_set(APP_TIMEZONE);
 

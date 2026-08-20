@@ -152,7 +152,7 @@ function user_create(string $username, string $nickname, string $birthdate, stri
             'nickname'              => $nickname,
             'birthdate'             => $birthdate,
             'avatar'                => '',
-            'notify'                => ['uploads' => true, 'likes' => true],
+            'notify'                => ['uploads' => true, 'likes' => true, 'birthdays' => true],
             'password_hash'         => password_hash($password, PASSWORD_DEFAULT),
             'is_admin'              => $isAdmin,
             'must_change_password'  => $mustChangePassword,

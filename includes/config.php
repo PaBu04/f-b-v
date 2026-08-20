@@ -90,3 +90,16 @@ const LOGIN_LOCK_SECONDS = 900;
 /** Session-Einstellungen. */
 const SESSION_NAME         = 'fbv_sid';
 const SESSION_IDLE_TIMEOUT = 60 * 60 * 12; // 12 Stunden ohne Aktivität
+
+/**
+ * Geburtstage: einmal am Tag geht ein Gruß an alle Mitglieder, die
+ * Benachrichtigungen dafür eingeschaltet haben.
+ *
+ * Auf dem Webspace läuft kein Cron-Dienst; den Versand stößt deshalb der erste
+ * Galerie-Aufruf des Tages ab BIRTHDAY_NOTIFY_HOUR an (siehe
+ * includes/birthdays.php). Schaut vor Mitternacht niemand vorbei, kommt der
+ * Gruß an diesem Tag nicht mehr – der Hinweis auf der Galerieseite bleibt
+ * davon unberührt.
+ */
+const BIRTHDAY_NOTIFY      = true;
+const BIRTHDAY_NOTIFY_HOUR = 8;

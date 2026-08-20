@@ -26,6 +26,7 @@ includes/        Programmcode, nicht direkt aufrufbar (.htaccess sperrt)
   images.php     Upload, Vorschaubilder, Profilbilder
   likes.php      Likes mit Zwischenspeicher
   push.php       Web Push nach RFC 8291/8292, komplett selbst gebaut
+  birthdays.php  Geburtstage: Hinweis auf der Seite und ein Gruß je Tag
   zip.php        ZIP-Ausgabe ohne Zwischendatei
   helpers.php    h(), CSRF, Meldungen, Formatierung
   layout.php     Kopf- und Fußbereich jeder Seite
@@ -40,8 +41,8 @@ PHP-Datei, die `includes/bootstrap.php` einbindet und HTML ausgibt.
 
 ## Ablage
 
-Sechs JSON-Sammlungen in `data/`: `users`, `images`, `likes`,
-`push_subscriptions`, `push_keys`, `throttle`.
+Sieben JSON-Sammlungen in `data/`: `users`, `images`, `likes`,
+`push_subscriptions`, `push_keys`, `throttle`, `birthday_notices`.
 
 **Lesen** mit `store_read('users')`. **Schreiben ausschließlich** mit
 `store_mutate('users', function (array &$daten) { ... })` — das sperrt die

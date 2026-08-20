@@ -26,7 +26,7 @@ function layout_header(string $title, ?array $user = null, bool $narrow = false)
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="<?= h(APP_NAME) ?>">
-<link rel="stylesheet" href="assets/style.css?v=4">
+<link rel="stylesheet" href="assets/style.css?v=5">
 </head>
 <body<?= $narrow ? ' class="narrow"' : '' ?>>
 <?php if ($user !== null): ?>

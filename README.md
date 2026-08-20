@@ -172,6 +172,7 @@ Likes dessen Bilder insgesamt bekommen haben.
 | `data/images.json`| Metadaten der Bilder                                |
 | `data/likes.json` | Likes (je Mitglied und Bild höchstens einer)        |
 | `data/throttle.json` | Fehlversuche beim Login je IP                    |
+| `data/birthday_notices.json` | verschickte Geburtstagsgrüße je Tag      |
 | `uploads/`        | Originalbilder                                      |
 | `uploads/thumbs/` | Vorschaubilder (JPEG, längste Kante 700 px)         |
 | `uploads/avatars/`| Profilbilder (JPEG, 320 × 320 px)                   |
@@ -184,9 +185,10 @@ Sicherung: es genügt, `data/` und `uploads/` zu kopieren.
 ## Benachrichtigungen
 
 Mitglieder können sich per Web Push benachrichtigen lassen, wenn jemand neue
-Bilder hochlädt oder wenn einem ihrer Bilder ein Like gegeben wird. Ein- und
-ausgeschaltet wird das unter **Mein Konto → Benachrichtigungen**, getrennt nach
-Anlass; angemeldet wird **je Gerät** einzeln.
+Bilder hochlädt, wenn einem ihrer Bilder ein Like gegeben wird oder wenn jemand
+Geburtstag hat. Ein- und ausgeschaltet wird das unter
+**Mein Konto → Benachrichtigungen**, getrennt nach Anlass; angemeldet wird
+**je Gerät** einzeln.
 
 Umgesetzt ist das ohne Fremdbibliothek in [includes/push.php](includes/push.php):
 
@@ -212,6 +214,30 @@ es [manifest.webmanifest](manifest.webmanifest). Auf Android genügt der Browser
 
 Der Zustand steht in der Verwaltung unter „Serverumgebung": ob Push
 einsatzbereit ist, wie viele Geräte angemeldet sind und worüber verschickt wird.
+
+## Geburtstage
+
+Das Geburtsdatum steht ohnehin an jedem Konto, also erinnert die Seite von
+selbst daran. Wer heute Geburtstag hat, bekommt in der Mitgliederliste die
+Marke **Heute**, und über der Galerie steht ein Hinweis – für die
+Geburtstagskinder selbst als Glückwunsch.
+
+Zusätzlich geht einmal am Tag eine Benachrichtigung an alle, die das unter
+**Mein Konto → Benachrichtigungen** eingeschaltet haben; das Geburtstagskind
+selbst bekommt einen eigenen Gruß.
+
+Auf dem Webspace läuft kein Cron-Dienst, deshalb stößt **der erste Aufruf der
+Galerie** ab 8 Uhr den Versand an ([includes/birthdays.php](includes/birthdays.php)).
+Damit zwei gleichzeitige Besuche nicht denselben Gruß doppelt verschicken, wird
+der Tag vorher unter Dateisperre in `data/birthday_notices.json` beansprucht –
+verschickt wird nur einmal. Schaut an einem Tag niemand vorbei, entfällt die
+Benachrichtigung; der Hinweis auf der Seite erscheint trotzdem, sobald jemand
+kommt. Uhrzeit und Abschalter stehen als `BIRTHDAY_NOTIFY_HOUR` und
+`BIRTHDAY_NOTIFY` in `includes/config.php`, der Zustand („zuletzt am …") in der
+Verwaltung unter „Serverumgebung".
+
+Der 29. Februar wird in Jahren ohne Schalttag am 1. März gefeiert – so rechnet
+auch § 188 BGB.
 
 ## Erscheinungsbild
 
@@ -254,7 +280,7 @@ verschiebt die Navigation daher nicht mehr.
 
 Alle Stellschrauben stehen in `includes/config.php`: maximale Dateigröße,
 Größe der Vorschaubilder, Bilder pro Seite, Mindestlänge der Passwörter,
-Login-Sperre und Session-Timeout.
+Login-Sperre, Session-Timeout und die Geburtstagsgrüße.
 
 ## Anforderungen
 
