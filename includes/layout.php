@@ -26,7 +26,7 @@ function layout_header(string $title, ?array $user = null, bool $narrow = false)
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="<?= h(APP_NAME) ?>">
-<link rel="stylesheet" href="assets/style.css?v=5">
+<link rel="stylesheet" href="assets/style.css?v=6">
 </head>
 <body<?= $narrow ? ' class="narrow"' : '' ?>>
 <?php if ($user !== null): ?>
@@ -39,6 +39,7 @@ function layout_header(string $title, ?array $user = null, bool $narrow = false)
     <nav class="nav">
       <a href="index.php"<?= $script === 'index.php' ? ' class="active"' : '' ?>>Galerie</a>
       <a href="members.php"<?= $script === 'members.php' ? ' class="active"' : '' ?>>Mitglieder</a>
+      <a href="stammtisch.php"<?= $script === 'stammtisch.php' ? ' class="active"' : '' ?>>Stammtisch</a>
       <a href="account.php"<?= $script === 'account.php' ? ' class="active"' : '' ?>>Mein Konto</a>
       <?php if (!empty($user['is_admin'])): ?>
         <a href="admin.php"<?= $script === 'admin.php' ? ' class="active"' : '' ?>>Verwaltung</a>
@@ -69,7 +70,7 @@ function layout_footer(bool $withScript = false): void
   <span><?= h(APP_NAME) ?> &middot; interner Bereich &middot; <?= date('Y') ?></span>
 </footer>
 <?php if ($withScript): ?>
-<script src="assets/app.js?v=4"></script>
+<script src="assets/app.js?v=5"></script>
 <?php endif; ?>
 </body>
 </html>

@@ -164,6 +164,62 @@ Beim Löschen eines Bildes oder eines Mitglieds werden die zugehörigen Likes
 mit entfernt. Im Adminbereich zeigt die Spalte „Likes" je Mitglied, wie viele
 Likes dessen Bilder insgesamt bekommen haben.
 
+## Stammtisch
+
+Der Reiter **Stammtisch** führt Buch darüber, was wöchentlich gekocht wurde.
+Ein Eintrag hält vier Dinge fest: das Gericht, das Datum, wer am Herd stand,
+wer eingekauft hat und in wessen Küche gekocht wurde. Dazu lässt sich ein
+bereits hochgeladenes Bild aus der Galerie verknüpfen.
+
+Auswählbar sind ausschließlich registrierte Mitglieder – die Namen kommen aus
+`users.json`, und der Server wirft beim Speichern alles weg, was nicht dazu
+gehört. Pflicht sind Gericht, Datum und mindestens eine Person am Herd; Küche
+und Einkauf dürfen leer bleiben, wenn sich niemand mehr erinnert.
+
+Anlegen darf jedes Mitglied. Ändern und löschen darf, wer den Eintrag verfasst
+hat – und die Verwaltung. Die Liste ist nach Kalenderwochen gruppiert, das
+Datum bleibt trotzdem am Eintrag, damit auch zwei Abende in einer Woche
+nebeneinander stehen können.
+
+### Punkte
+
+Die Punkte sind **nirgends gespeichert**. Sie ergeben sich aus den Einträgen
+und werden bei jedem Aufruf neu berechnet. Wird ein Eintrag korrigiert, stimmt
+die Tabelle sofort wieder – und niemand kann an einem Punktestand drehen, ohne
+dass es am Eintrag sichtbar wird.
+
+| Wofür | Punkte |
+|-------|--------|
+| Kochen (Verantwortung am Herd) | 5, geteilt durch die Zahl der Köche |
+| … mit verknüpftem Foto | 6 statt 5, ebenfalls geteilt |
+| Einkauf | 3, geteilt durch die Zahl der Einkaufenden |
+| Küche gestellt | 2 |
+| Serie: je drei Stammtische in Folge, an denen jemand beteiligt war | +2 |
+| Allrounder: in einer Saison einmal gekocht, eingekauft und die Küche gestellt | +5 |
+
+Geteilt heißt geteilt: Kochen zwei Leute zusammen, bekommt jeder 2,5 Punkte.
+Wer allein kocht, bekommt alle fünf. Für die Serie zählen die Stammtische, die
+es wirklich gab – wer bei dreien hintereinander dabei war, bekommt den Bonus,
+egal wie viele Wochen dazwischen lagen.
+
+Aus den Saisonpunkten ergibt sich eine Stufe: **Küchenhilfe** ab 0,
+**Sous-Chef** ab 10, **Küchenleitung** ab 25, **Sterneküche** ab 50 und
+**Legende** ab 100. Dazu vergibt jede Saison vier Abzeichen an die jeweils
+Besten – bei Gleichstand an alle davon:
+
+- **Küchenchef** – die meisten Punkte am Herd
+- **Einkaufsheld** – am häufigsten eingekauft
+- **Gastgeber** – am häufigsten die Küche gestellt
+- **Foodblogger** – die meisten Gerichte mit Foto
+
+Eine Saison ist ein Kalenderjahr; über den Umschalter oben rechts lässt sich
+jedes Jahr einzeln und die ewige Tabelle ansehen.
+
+Wird ein Bild aus der Galerie gelöscht, verschwindet die Verknüpfung aus den
+Einträgen und der Foto-Zuschlag mit ihr. Wird ein Mitglied gelöscht, bleiben
+die Einträge als Vereinsgeschichte stehen; die Person fällt nur aus den Rollen
+und der Tabelle heraus.
+
 ## Datenablage
 
 | Ort               | Inhalt                                             |
@@ -173,6 +229,7 @@ Likes dessen Bilder insgesamt bekommen haben.
 | `data/likes.json` | Likes (je Mitglied und Bild höchstens einer)        |
 | `data/throttle.json` | Fehlversuche beim Login je IP                    |
 | `data/birthday_notices.json` | verschickte Geburtstagsgrüße je Tag      |
+| `data/meals.json` | Stammtischessen mit Rollen und Bildverknüpfung  |
 | `uploads/`        | Originalbilder                                      |
 | `uploads/thumbs/` | Vorschaubilder (JPEG, längste Kante 700 px)         |
 | `uploads/avatars/`| Profilbilder (JPEG, 320 × 320 px)                   |

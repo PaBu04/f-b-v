@@ -741,6 +741,35 @@
     });
   });
 
+  /* ---------------------------------------- Stammtisch ------------- */
+
+  /*
+   * Vorschau des verknüpften Bildes. Ohne JavaScript bleibt es bei der
+   * Auswahlliste – zum Speichern reicht die völlig aus.
+   */
+  var bildAuswahl = document.querySelector('[data-image-picker]');
+  var bildVorschau = document.getElementById('meal-preview');
+
+  if (bildAuswahl && bildVorschau) {
+    var vorschauBild = bildVorschau.querySelector('img');
+
+    var zeigeVorschau = function () {
+      var option = bildAuswahl.options[bildAuswahl.selectedIndex];
+      var quelle = option ? option.getAttribute('data-thumb') : null;
+
+      if (quelle) {
+        vorschauBild.src = quelle;
+        bildVorschau.hidden = false;
+      } else {
+        vorschauBild.removeAttribute('src');
+        bildVorschau.hidden = true;
+      }
+    };
+
+    bildAuswahl.addEventListener('change', zeigeVorschau);
+    zeigeVorschau();
+  }
+
   /* ---------------------------------------- Lightbox --------------- */
 
   var lightbox = document.getElementById('lightbox');
