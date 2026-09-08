@@ -167,14 +167,15 @@ Likes dessen Bilder insgesamt bekommen haben.
 ## Stammtisch
 
 Der Reiter **Stammtisch** führt Buch darüber, was wöchentlich gekocht wurde.
-Ein Eintrag hält vier Dinge fest: das Gericht, das Datum, wer am Herd stand,
-wer eingekauft hat und in wessen Küche gekocht wurde. Dazu lässt sich ein
+Ein Eintrag hält fest: das Gericht, das Datum, wer am Herd stand, wer
+eingekauft hat, wer abgespült hat und in wessen Küche gekocht wurde. Kochen,
+Einkauf und Abspülen dürfen mehrere Leute übernehmen. Dazu lässt sich ein
 bereits hochgeladenes Bild aus der Galerie verknüpfen.
 
 Auswählbar sind ausschließlich registrierte Mitglieder – die Namen kommen aus
 `users.json`, und der Server wirft beim Speichern alles weg, was nicht dazu
-gehört. Pflicht sind Gericht, Datum und mindestens eine Person am Herd; Küche
-und Einkauf dürfen leer bleiben, wenn sich niemand mehr erinnert.
+gehört. Pflicht sind Gericht, Datum und mindestens eine Person am Herd; Küche,
+Einkauf und Abspülen dürfen leer bleiben, wenn sich niemand mehr erinnert.
 
 Anlegen darf jedes Mitglied. Ändern und löschen darf, wer den Eintrag verfasst
 hat – und die Verwaltung. Die Liste ist nach Kalenderwochen gruppiert, das
@@ -193,9 +194,10 @@ dass es am Eintrag sichtbar wird.
 | Kochen (Verantwortung am Herd) | 5, geteilt durch die Zahl der Köche |
 | … mit verknüpftem Foto | 6 statt 5, ebenfalls geteilt |
 | Einkauf | 3, geteilt durch die Zahl der Einkaufenden |
+| Abspülen | 2, geteilt durch die Zahl der Spülenden |
 | Küche gestellt | 2 |
 | Serie: je drei Stammtische in Folge, an denen jemand beteiligt war | +2 |
-| Allrounder: in einer Saison einmal gekocht, eingekauft und die Küche gestellt | +5 |
+| Allrounder: in einer Saison einmal gekocht, eingekauft, abgespült und die Küche gestellt | +5 |
 
 Geteilt heißt geteilt: Kochen zwei Leute zusammen, bekommt jeder 2,5 Punkte.
 Wer allein kocht, bekommt alle fünf. Für die Serie zählen die Stammtische, die
@@ -210,6 +212,7 @@ Besten – bei Gleichstand an alle davon:
 - **Küchenchef** – die meisten Punkte am Herd
 - **Einkaufsheld** – am häufigsten eingekauft
 - **Gastgeber** – am häufigsten die Küche gestellt
+- **Spülmeister** – am häufigsten abgespült
 - **Foodblogger** – die meisten Gerichte mit Foto
 
 Eine Saison ist ein Kalenderjahr; über den Umschalter oben rechts lässt sich

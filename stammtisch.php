@@ -22,6 +22,7 @@ $formular = [
     'host_id'     => '',
     'cook_ids'    => [],
     'shopper_ids' => [],
+    'washer_ids'  => [],
     'image_id'    => '',
 ];
 
@@ -38,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'host_id'     => (string) ($_POST['host_id'] ?? ''),
         'cook_ids'    => stammtisch_post_ids('cook_ids'),
         'shopper_ids' => stammtisch_post_ids('shopper_ids'),
+        'washer_ids'  => stammtisch_post_ids('washer_ids'),
         'image_id'    => (string) ($_POST['image_id'] ?? ''),
     ];
 
@@ -93,6 +95,7 @@ if ($bearbeiten !== '' && $fehler === null) {
         'host_id'     => (string) ($meal['host_id'] ?? ''),
         'cook_ids'    => meal_role_ids($meal, 'cook_ids'),
         'shopper_ids' => meal_role_ids($meal, 'shopper_ids'),
+        'washer_ids'  => meal_role_ids($meal, 'washer_ids'),
         'image_id'    => (string) ($meal['image_id'] ?? ''),
     ];
 }
@@ -211,6 +214,7 @@ layout_header('Stammtisch', $user);
             <th>Stufe</th>
             <th title="Am Herd">Kochen</th>
             <th title="Zutaten gekauft">Einkauf</th>
+            <th title="Nach dem Essen abgespült">Spülen</th>
             <th title="Küche gestellt">Gastgeber</th>
             <th title="Längste Serie in Folge">Serie</th>
             <th title="Serien- und Allrounder-Bonus">Bonus</th>
@@ -231,7 +235,7 @@ layout_header('Stammtisch', $user);
                       <span class="badge badge-warn" title="<?= h(MEAL_BADGES[$schluessel][1]) ?>"><?= h(MEAL_BADGES[$schluessel][0]) ?></span>
                     <?php endforeach; ?>
                     <?php if ($zeile['allrounder']): ?>
-                      <span class="badge" title="alle drei Rollen in dieser Saison">Allrounder</span>
+                      <span class="badge" title="alle vier Rollen in dieser Saison">Allrounder</span>
                     <?php endif; ?>
                   </span>
                 </span>
@@ -239,6 +243,7 @@ layout_header('Stammtisch', $user);
               <td data-label="Stufe"><?= h($zeile['stufe']) ?></td>
               <td data-label="Kochen"><?= (int) $zeile['koch'] ?></td>
               <td data-label="Einkauf"><?= (int) $zeile['einkauf'] ?></td>
+              <td data-label="Spülen"><?= (int) $zeile['spuelen'] ?></td>
               <td data-label="Gastgeber"><?= (int) $zeile['gastgeber'] ?></td>
               <td data-label="Längste Serie"><?= (int) $zeile['serie'] ?></td>
               <td data-label="Bonus"><?= $zeile['bonus'] > 0 ? '+' . h(meal_format_points((float) $zeile['bonus'])) : '–' ?></td>
@@ -268,11 +273,14 @@ layout_header('Stammtisch', $user);
         <?= h(meal_format_points(MEAL_POINTS_COOK + MEAL_POINTS_PHOTO)) ?>.</li>
       <li><strong><?= h(meal_format_points(MEAL_POINTS_SHOPPING)) ?> Punkte</strong> für den Einkauf –
         ebenfalls geteilt.</li>
+      <li><strong><?= h(meal_format_points(MEAL_POINTS_WASHING)) ?> Punkte</strong> fürs Abspülen –
+        auch die werden unter allen am Spülbecken geteilt.</li>
       <li><strong><?= h(meal_format_points(MEAL_POINTS_HOST)) ?> Punkte</strong> für die Küche, in der gekocht wurde.</li>
       <li><strong>+<?= h(meal_format_points(MEAL_POINTS_STREAK)) ?></strong> für je
         <?= MEAL_STREAK_LENGTH ?> Stammtische in Folge, an denen du beteiligt warst.</li>
       <li><strong>+<?= h(meal_format_points(MEAL_POINTS_ALLROUND)) ?></strong> als Allrounder:
-        in einer Saison einmal gekocht, einmal eingekauft, einmal die Küche gestellt.</li>
+        in einer Saison einmal gekocht, einmal eingekauft, einmal abgespült und
+        einmal die Küche gestellt.</li>
       <li>Stufen:
         <?php $stufen = []; foreach (MEAL_LEVELS as $stufe) { $stufen[] = h($stufe[1]) . ' ab ' . h(meal_format_points($stufe[0])); } ?>
         <?= implode(' · ', $stufen) ?>.</li>
@@ -365,6 +373,19 @@ layout_header('Stammtisch', $user);
       </div>
     </fieldset>
 
+    <fieldset class="form-wide">
+      <legend>Wer hat abgespült? <span class="muted">(Punkte werden geteilt)</span></legend>
+      <div class="person-picker">
+        <?php foreach ($mitglieder as $mitglied): ?>
+          <label class="checkbox">
+            <input type="checkbox" name="washer_ids[]" value="<?= h((string) $mitglied['id']) ?>"
+                   <?= in_array((string) $mitglied['id'], $formular['washer_ids'], true) ? 'checked' : '' ?>>
+            <?= h((string) $mitglied['nickname']) ?>
+          </label>
+        <?php endforeach; ?>
+      </div>
+    </fieldset>
+
     <div class="form-wide">
       <button type="submit" class="btn btn-primary"><?= $istBearbeitung ? 'Änderung speichern' : 'Eintrag speichern' ?></button>
       <?php if ($istBearbeitung): ?>
@@ -415,6 +436,7 @@ layout_header('Stammtisch', $user);
         <dl class="meal-roles">
           <dt>Gekocht</dt><dd><?= stammtisch_rolle(meal_role_ids($meal, 'cook_ids'), $usersById) ?></dd>
           <dt>Eingekauft</dt><dd><?= stammtisch_rolle(meal_role_ids($meal, 'shopper_ids'), $usersById) ?></dd>
+          <dt>Abgespült</dt><dd><?= stammtisch_rolle(meal_role_ids($meal, 'washer_ids'), $usersById) ?></dd>
           <dt>Küche</dt><dd><?= stammtisch_rolle(meal_role_ids($meal, 'host_id'), $usersById) ?></dd>
         </dl>
 

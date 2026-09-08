@@ -18,11 +18,12 @@ declare(strict_types=1);
 /* --------------------------------------------------------------------- */
 
 /**
- * Punkte je Eintrag. Kochen und Einkauf sind Töpfe: Stehen mehrere Leute
- * dahinter, wird der Topf geteilt. Wer allein kocht, bekommt also alles.
+ * Punkte je Eintrag. Kochen, Einkauf und Abspülen sind Töpfe: Stehen mehrere
+ * Leute dahinter, wird der Topf geteilt. Wer allein kocht, bekommt also alles.
  */
 const MEAL_POINTS_COOK     = 5.0;  // Topf für alle am Herd
 const MEAL_POINTS_SHOPPING = 3.0;  // Topf für alle am Einkaufswagen
+const MEAL_POINTS_WASHING  = 2.0;  // Topf für alle am Spülbecken
 const MEAL_POINTS_HOST     = 2.0;  // für die Küche, in der gekocht wurde
 const MEAL_POINTS_PHOTO    = 1.0;  // Zuschlag in den Kochtopf, wenn ein Foto hängt
 
@@ -30,7 +31,7 @@ const MEAL_POINTS_PHOTO    = 1.0;  // Zuschlag in den Kochtopf, wenn ein Foto h�
 const MEAL_STREAK_LENGTH = 3;
 const MEAL_POINTS_STREAK = 2.0;
 
-/** Bonus: alle drei Rollen mindestens einmal in derselben Saison. */
+/** Bonus: alle vier Rollen mindestens einmal in derselben Saison. */
 const MEAL_POINTS_ALLROUND = 5.0;
 
 /** Stufen: ab so vielen Saisonpunkten gilt der Titel. */
@@ -47,6 +48,7 @@ const MEAL_BADGES = [
     'koch'        => ['Küchenchef', 'die meisten Punkte am Herd'],
     'einkauf'     => ['Einkaufsheld', 'am häufigsten eingekauft'],
     'gastgeber'   => ['Gastgeber', 'am häufigsten die Küche gestellt'],
+    'spuelen'     => ['Spülmeister', 'am häufigsten abgespült'],
     'foodblogger' => ['Foodblogger', 'die meisten Gerichte mit Foto'],
 ];
 
@@ -181,7 +183,8 @@ function meal_participants(array $meal): array
     $ids = array_merge(
         meal_role_ids($meal, 'host_id'),
         meal_role_ids($meal, 'cook_ids'),
-        meal_role_ids($meal, 'shopper_ids')
+        meal_role_ids($meal, 'shopper_ids'),
+        meal_role_ids($meal, 'washer_ids')
     );
 
     return array_values(array_unique($ids));
@@ -239,6 +242,7 @@ function meal_clean(array $eingabe): array
         'host_id'     => $gastgeber[0] ?? '',
         'cook_ids'    => meal_role_ids($eingabe, 'cook_ids'),
         'shopper_ids' => meal_role_ids($eingabe, 'shopper_ids'),
+        'washer_ids'  => meal_role_ids($eingabe, 'washer_ids'),
         'image_id'    => $bild !== '' && image_by_id($bild) !== null ? $bild : '',
     ];
 }
@@ -344,6 +348,11 @@ function meal_points_of(array $meal): array
         $punkte[$id] = ($punkte[$id] ?? 0.0) + MEAL_POINTS_SHOPPING / count($einkauf);
     }
 
+    $spuelen = meal_role_ids($meal, 'washer_ids');
+    foreach ($spuelen as $id) {
+        $punkte[$id] = ($punkte[$id] ?? 0.0) + MEAL_POINTS_WASHING / count($spuelen);
+    }
+
     foreach (meal_role_ids($meal, 'host_id') as $id) {
         $punkte[$id] = ($punkte[$id] ?? 0.0) + MEAL_POINTS_HOST;
     }
@@ -385,6 +394,9 @@ function meals_scoreboard(?string $saison = null): array
         foreach (meal_role_ids($meal, 'shopper_ids') as $id) {
             $zeilen[$id]['einkauf'] = (int) ($zeilen[$id]['einkauf'] ?? 0) + 1;
         }
+        foreach (meal_role_ids($meal, 'washer_ids') as $id) {
+            $zeilen[$id]['spuelen'] = (int) ($zeilen[$id]['spuelen'] ?? 0) + 1;
+        }
         foreach (meal_role_ids($meal, 'host_id') as $id) {
             $zeilen[$id]['gastgeber'] = (int) ($zeilen[$id]['gastgeber'] ?? 0) + 1;
         }
@@ -416,7 +428,7 @@ function meals_scoreboard(?string $saison = null): array
     foreach ($zeilen as $id => $zeile) {
         $zeile += [
             'basis' => 0.0, 'kochpunkte' => 0.0, 'koch' => 0, 'einkauf' => 0,
-            'gastgeber' => 0, 'gerichte' => 0, 'mit_foto' => 0,
+            'spuelen' => 0, 'gastgeber' => 0, 'gerichte' => 0, 'mit_foto' => 0,
         ];
 
         // Serie: jeder dritte Stammtisch in Folge bringt Bonus
@@ -435,7 +447,8 @@ function meals_scoreboard(?string $saison = null): array
             }
         }
 
-        $allrounder = $zeile['koch'] > 0 && $zeile['einkauf'] > 0 && $zeile['gastgeber'] > 0;
+        $allrounder = $zeile['koch'] > 0 && $zeile['einkauf'] > 0
+            && $zeile['spuelen'] > 0 && $zeile['gastgeber'] > 0;
         if ($allrounder) {
             $bonus += MEAL_POINTS_ALLROUND;
         }
@@ -457,6 +470,7 @@ function meals_scoreboard(?string $saison = null): array
         'koch'        => 'kochpunkte',
         'einkauf'     => 'einkauf',
         'gastgeber'   => 'gastgeber',
+        'spuelen'     => 'spuelen',
         'foodblogger' => 'mit_foto',
     ];
     foreach ($spalten as $abzeichen => $spalte) {
