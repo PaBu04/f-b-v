@@ -177,6 +177,21 @@ Auswählbar sind ausschließlich registrierte Mitglieder – die Namen kommen au
 gehört. Pflicht sind Gericht, Datum und mindestens eine Person am Herd; Küche,
 Einkauf und Abspülen dürfen leer bleiben, wenn sich niemand mehr erinnert.
 
+Zu jedem Essen passt außerdem **ein Rezept** – ein Foto vom Kochbuch oder ein
+PDF. Es hängt direkt am Eintrag, nicht in der Galerie, und wird über
+`recipe.php` ausgeliefert; die Datei selbst liegt in `uploads/recipes/` und ist
+wie alle Uploads per `.htaccess` gesperrt. Erlaubt sind JPG, PNG, GIF, WEBP und
+PDF – geprüft wird am Inhalt der Datei, nicht an ihrer Endung. Fotografierte
+Rezepte rechnet der Browser vor dem Hochladen herunter (dieselbe Umrechnung wie
+in der Galerie), PDFs gehen unverändert durch und müssen unter dem Serverlimit
+bleiben.
+
+Hochladen darf jedes Mitglied, auch bei fremden Einträgen. Ersetzen und
+entfernen darf nur, wer das Rezept beigesteuert hat, wer den Eintrag angelegt
+hat, oder die Verwaltung – dahinter steckt ein Punkt, den man nicht beliebig
+verschieben können soll. Je Essen gibt es genau eines: Ein neues ersetzt das
+alte, die alte Datei wird dabei gelöscht.
+
 Anlegen darf jedes Mitglied. Ändern und löschen darf, wer den Eintrag verfasst
 hat – und die Verwaltung. Die Liste ist nach Kalenderwochen gruppiert, das
 Datum bleibt trotzdem am Eintrag, damit auch zwei Abende in einer Woche
@@ -196,8 +211,9 @@ dass es am Eintrag sichtbar wird.
 | Einkauf | 3, geteilt durch die Zahl der Einkaufenden |
 | Abspülen | 2, geteilt durch die Zahl der Spülenden |
 | Küche gestellt | 2 |
+| Rezept hochgeladen | 1 |
 | Serie: je drei Stammtische in Folge, an denen jemand beteiligt war | +2 |
-| Allrounder: in einer Saison einmal gekocht, eingekauft, abgespült und die Küche gestellt | +5 |
+| Allrounder: in einer Saison einmal gekocht, eingekauft, abgespült, die Küche gestellt und ein Rezept beigesteuert | +5 |
 
 Geteilt heißt geteilt: Kochen zwei Leute zusammen, bekommt jeder 2,5 Punkte.
 Wer allein kocht, bekommt alle fünf. Für die Serie zählen die Stammtische, die
@@ -213,13 +229,15 @@ Besten – bei Gleichstand an alle davon:
 - **Einkaufsheld** – am häufigsten eingekauft
 - **Gastgeber** – am häufigsten die Küche gestellt
 - **Spülmeister** – am häufigsten abgespült
+- **Rezeptsammler** – die meisten Rezepte beigesteuert
 - **Foodblogger** – die meisten Gerichte mit Foto
 
 Eine Saison ist ein Kalenderjahr; über den Umschalter oben rechts lässt sich
 jedes Jahr einzeln und die ewige Tabelle ansehen.
 
 Wird ein Bild aus der Galerie gelöscht, verschwindet die Verknüpfung aus den
-Einträgen und der Foto-Zuschlag mit ihr. Wird ein Mitglied gelöscht, bleiben
+Einträgen und der Foto-Zuschlag mit ihr. Wird ein Eintrag gelöscht, geht sein
+Rezept mit – es bleiben keine verwaisten Dateien liegen. Wird ein Mitglied gelöscht, bleiben
 die Einträge als Vereinsgeschichte stehen; die Person fällt nur aus den Rollen
 und der Tabelle heraus.
 
@@ -236,6 +254,7 @@ und der Tabelle heraus.
 | `uploads/`        | Originalbilder                                      |
 | `uploads/thumbs/` | Vorschaubilder (JPEG, längste Kante 700 px)         |
 | `uploads/avatars/`| Profilbilder (JPEG, 320 × 320 px)                   |
+| `uploads/recipes/`| Rezepte zu den Stammtischessen (Bild oder PDF)      |
 
 Schreibzugriffe laufen über exklusive Dateisperren (`flock`), gleichzeitige
 Uploads mehrerer Mitglieder sind damit unproblematisch.

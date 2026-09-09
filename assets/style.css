@@ -771,6 +771,35 @@ legend .muted { font-weight: 400; }
   color: var(--accent-dark);
 }
 
+.meal-recipe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem .7rem;
+  margin-top: .7rem;
+  padding-top: .7rem;
+  border-top: 1px solid var(--border);
+  font-size: .85rem;
+}
+.meal-recipe form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  margin: 0;
+}
+.meal-recipe input[type="file"] {
+  flex: 1 1 150px;
+  min-width: 0;
+  max-width: 100%;
+  font-size: .8rem;
+}
+
+.recipe-note { font-size: .78rem; color: var(--text-muted); }
+.recipe-note.is-ok { color: var(--success); }
+.recipe-note.is-error { color: var(--danger); }
+.recipe-note[hidden] { display: none; }
+
 .meal-foot {
   display: flex;
   align-items: center;

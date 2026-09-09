@@ -34,7 +34,7 @@ includes/        Programmcode, nicht direkt aufrufbar (.htaccess sperrt)
 *.php            eine Datei je Seite bzw. Endpunkt, kein Router
 assets/          app.js und style.css
 data/            JSON-Dateien zur Laufzeit  — NIE committen
-uploads/         Bilder, Vorschauen, Profilbilder — NIE committen
+uploads/         Bilder, Vorschauen, Profilbilder, Rezepte — NIE committen
 ```
 
 Es gibt keinen Router und keine Vorlagen-Sprache. Jede Seite ist eine

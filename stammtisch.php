@@ -27,6 +27,17 @@ $formular = [
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    /*
+     * Überschreitet ein hochgeladenes Rezept post_max_size, ist $_POST leer –
+     * samt Token. Ohne diesen Hinweis liefe das auf ein unverständliches
+     * „Ungültiges Formular-Token" hinaus.
+     */
+    if ($_POST === [] && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+        flash('error', 'Die Datei war zu groß (Serverlimit: '
+            . format_bytes(ini_bytes((string) ini_get('post_max_size'))) . ').');
+        redirect('stammtisch.php');
+    }
+
     csrf_require();
 
     $action = (string) ($_POST['action'] ?? '');
@@ -63,6 +74,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('stammtisch.php');
         }
         $formular = $eingabe + ['id' => $id];
+    } elseif ($action === 'recipe' && $meal !== null) {
+        $datei = $_FILES['recipe'] ?? null;
+        $vorhanden = meal_recipe($meal) !== null;
+
+        if ($vorhanden && !meal_recipe_may_manage($meal, $user)) {
+            flash('error', 'Das Rezept darf nur ersetzen, wer es beigesteuert hat.');
+        } elseif (!is_array($datei) || (int) ($datei['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            flash('error', 'Bitte eine Datei auswählen.');
+        } else {
+            list($rezept, $problem) = meal_recipe_store($id, $datei, $user);
+            if ($rezept === null) {
+                flash('error', (string) $problem);
+            } else {
+                flash('success', $vorhanden ? 'Das Rezept wurde ersetzt.' : 'Das Rezept wurde hochgeladen.');
+            }
+        }
+        redirect('stammtisch.php');
+    } elseif ($action === 'recipe_delete' && $meal !== null) {
+        if (!meal_recipe_may_manage($meal, $user)) {
+            flash('error', 'Das Rezept darf nur entfernen, wer es beigesteuert hat.');
+        } else {
+            meal_recipe_delete($id);
+            flash('success', 'Das Rezept wurde entfernt.');
+        }
+        redirect('stammtisch.php');
     } elseif ($action === 'delete' && $meal !== null) {
         if (!meal_may_edit($meal, $user)) {
             flash('error', 'Diesen Eintrag darf nur löschen, wer ihn angelegt hat.');
@@ -116,6 +152,9 @@ if ($gewaehlt === 'alle') {
 } else {
     $saison = $saisons[0] ?? date('Y');
 }
+
+// Was der Server tatsächlich annimmt – Rezepte laufen durch dieselbe Grenze
+$rezeptLimit = min(MAX_RECIPE_BYTES, effective_upload_limit());
 
 $tabelle = meals_scoreboard($saison);
 $podium  = array_slice($tabelle, 0, 3);
@@ -216,6 +255,7 @@ layout_header('Stammtisch', $user);
             <th title="Zutaten gekauft">Einkauf</th>
             <th title="Nach dem Essen abgespült">Spülen</th>
             <th title="Küche gestellt">Gastgeber</th>
+            <th title="Rezept beigesteuert">Rezept</th>
             <th title="Längste Serie in Folge">Serie</th>
             <th title="Serien- und Allrounder-Bonus">Bonus</th>
             <th>Punkte</th>
@@ -235,7 +275,7 @@ layout_header('Stammtisch', $user);
                       <span class="badge badge-warn" title="<?= h(MEAL_BADGES[$schluessel][1]) ?>"><?= h(MEAL_BADGES[$schluessel][0]) ?></span>
                     <?php endforeach; ?>
                     <?php if ($zeile['allrounder']): ?>
-                      <span class="badge" title="alle vier Rollen in dieser Saison">Allrounder</span>
+                      <span class="badge" title="alle fünf Rollen in dieser Saison">Allrounder</span>
                     <?php endif; ?>
                   </span>
                 </span>
@@ -245,6 +285,7 @@ layout_header('Stammtisch', $user);
               <td data-label="Einkauf"><?= (int) $zeile['einkauf'] ?></td>
               <td data-label="Spülen"><?= (int) $zeile['spuelen'] ?></td>
               <td data-label="Gastgeber"><?= (int) $zeile['gastgeber'] ?></td>
+              <td data-label="Rezept"><?= (int) $zeile['rezept'] ?></td>
               <td data-label="Längste Serie"><?= (int) $zeile['serie'] ?></td>
               <td data-label="Bonus"><?= $zeile['bonus'] > 0 ? '+' . h(meal_format_points((float) $zeile['bonus'])) : '–' ?></td>
               <td data-label="Punkte"><strong><?= h(meal_format_points((float) $zeile['punkte'])) ?></strong></td>
@@ -276,11 +317,13 @@ layout_header('Stammtisch', $user);
       <li><strong><?= h(meal_format_points(MEAL_POINTS_WASHING)) ?> Punkte</strong> fürs Abspülen –
         auch die werden unter allen am Spülbecken geteilt.</li>
       <li><strong><?= h(meal_format_points(MEAL_POINTS_HOST)) ?> Punkte</strong> für die Küche, in der gekocht wurde.</li>
+      <li><strong><?= h(meal_format_points(MEAL_POINTS_RECIPE)) ?> Punkt</strong> fürs Rezept – je Essen
+        gibt es genau eines, der Punkt gehört der Person, die es hochgeladen hat.</li>
       <li><strong>+<?= h(meal_format_points(MEAL_POINTS_STREAK)) ?></strong> für je
         <?= MEAL_STREAK_LENGTH ?> Stammtische in Folge, an denen du beteiligt warst.</li>
       <li><strong>+<?= h(meal_format_points(MEAL_POINTS_ALLROUND)) ?></strong> als Allrounder:
-        in einer Saison einmal gekocht, einmal eingekauft, einmal abgespült und
-        einmal die Küche gestellt.</li>
+        in einer Saison einmal gekocht, einmal eingekauft, einmal abgespült,
+        einmal die Küche gestellt und einmal ein Rezept beigesteuert.</li>
       <li>Stufen:
         <?php $stufen = []; foreach (MEAL_LEVELS as $stufe) { $stufen[] = h($stufe[1]) . ' ab ' . h(meal_format_points($stufe[0])); } ?>
         <?= implode(' · ', $stufen) ?>.</li>
@@ -394,7 +437,8 @@ layout_header('Stammtisch', $user);
     </div>
   </form>
   <p class="muted">Auswählbar sind nur registrierte Mitglieder. Gericht, Datum und mindestens
-    eine Person am Herd sind Pflicht.</p>
+    eine Person am Herd sind Pflicht. Das Rezept kommt anschließend am Eintrag selbst dazu –
+    Bild oder PDF, höchstens <?= h(format_bytes($rezeptLimit)) ?>.</p>
 </section>
 
 <section class="gallery-head">
@@ -449,6 +493,56 @@ layout_header('Stammtisch', $user);
             <?= implode(' · ', $teile) ?>
           </p>
         <?php endif; ?>
+
+        <?php
+          $rezept     = meal_recipe($meal);
+          $darfRezept = meal_recipe_may_manage($meal, $user);
+          $rezeptWer  = $rezept !== null
+              ? (string) ($usersById[(string) ($rezept['user_id'] ?? '')]['nickname'] ?? 'Unbekannt')
+              : '';
+        ?>
+        <div class="meal-recipe">
+          <?php if ($rezept !== null): ?>
+            <a class="btn btn-sm" href="recipe.php?id=<?= h((string) $meal['id']) ?>" target="_blank" rel="noopener">
+              <span aria-hidden="true">&#128220;</span> Rezept ansehen
+            </a>
+            <span class="muted">
+              <?= (string) ($rezept['ext'] ?? '') === 'pdf' ? 'PDF' : 'Bild' ?>,
+              <?= h(format_bytes((int) ($rezept['size'] ?? 0))) ?> · von <?= h($rezeptWer) ?>
+            </span>
+            <?php if ($darfRezept): ?>
+              <form method="post" enctype="multipart/form-data" class="recipe-form" data-recipe-form
+                    data-max-edge="<?= IMAGE_MAX_EDGE ?>" data-quality="<?= IMAGE_QUALITY ?>"
+                    data-limit="<?= (int) $rezeptLimit ?>">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="recipe">
+                <input type="hidden" name="id" value="<?= h((string) $meal['id']) ?>">
+                <input type="file" name="recipe" accept="image/*,application/pdf,.pdf" required
+                       aria-label="Rezept ersetzen">
+                <button type="submit" class="btn btn-sm">Ersetzen</button>
+                <span class="recipe-note" hidden></span>
+              </form>
+              <form method="post" onsubmit="return confirm('Rezept wirklich entfernen?');">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="recipe_delete">
+                <input type="hidden" name="id" value="<?= h((string) $meal['id']) ?>">
+                <button type="submit" class="btn btn-sm btn-danger">Rezept entfernen</button>
+              </form>
+            <?php endif; ?>
+          <?php else: ?>
+            <form method="post" enctype="multipart/form-data" class="recipe-form" data-recipe-form
+                  data-max-edge="<?= IMAGE_MAX_EDGE ?>" data-quality="<?= IMAGE_QUALITY ?>"
+                  data-limit="<?= (int) $rezeptLimit ?>">
+              <?= csrf_field() ?>
+              <input type="hidden" name="action" value="recipe">
+              <input type="hidden" name="id" value="<?= h((string) $meal['id']) ?>">
+              <input type="file" name="recipe" accept="image/*,application/pdf,.pdf" required
+                     aria-label="Rezept als Bild oder PDF">
+              <button type="submit" class="btn btn-sm">Rezept hochladen</button>
+              <span class="recipe-note" hidden></span>
+            </form>
+          <?php endif; ?>
+        </div>
 
         <div class="meal-foot">
           <span class="muted">eingetragen von <?= h((string) $autor) ?></span>

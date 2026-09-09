@@ -25,13 +25,14 @@ const MEAL_POINTS_COOK     = 5.0;  // Topf für alle am Herd
 const MEAL_POINTS_SHOPPING = 3.0;  // Topf für alle am Einkaufswagen
 const MEAL_POINTS_WASHING  = 2.0;  // Topf für alle am Spülbecken
 const MEAL_POINTS_HOST     = 2.0;  // für die Küche, in der gekocht wurde
+const MEAL_POINTS_RECIPE   = 1.0;  // für das hochgeladene Rezept
 const MEAL_POINTS_PHOTO    = 1.0;  // Zuschlag in den Kochtopf, wenn ein Foto hängt
 
 /** Bonus: je drei Stammtische in Folge, an denen jemand beteiligt war. */
 const MEAL_STREAK_LENGTH = 3;
 const MEAL_POINTS_STREAK = 2.0;
 
-/** Bonus: alle vier Rollen mindestens einmal in derselben Saison. */
+/** Bonus: alle fünf Rollen mindestens einmal in derselben Saison. */
 const MEAL_POINTS_ALLROUND = 5.0;
 
 /** Stufen: ab so vielen Saisonpunkten gilt der Titel. */
@@ -49,6 +50,7 @@ const MEAL_BADGES = [
     'einkauf'     => ['Einkaufsheld', 'am häufigsten eingekauft'],
     'gastgeber'   => ['Gastgeber', 'am häufigsten die Küche gestellt'],
     'spuelen'     => ['Spülmeister', 'am häufigsten abgespült'],
+    'rezept'      => ['Rezeptsammler', 'die meisten Rezepte beigesteuert'],
     'foodblogger' => ['Foodblogger', 'die meisten Gerichte mit Foto'],
 ];
 
@@ -187,7 +189,211 @@ function meal_participants(array $meal): array
         meal_role_ids($meal, 'washer_ids')
     );
 
+    $rezept = meal_recipe_author($meal);
+    if ($rezept !== null) {
+        $ids[] = $rezept;
+    }
+
     return array_values(array_unique($ids));
+}
+
+/* --------------------------------------------------------------------- */
+/* Rezept                                                                  */
+/* --------------------------------------------------------------------- */
+
+/**
+ * Das Rezept eines Eintrags – oder null, wenn keines hängt.
+ *
+ * @return ?array<string, mixed>
+ */
+function meal_recipe(array $meal): ?array
+{
+    $rezept = $meal['recipe'] ?? null;
+    if (!is_array($rezept) || (string) ($rezept['file'] ?? '') === '') {
+        return null;
+    }
+
+    return $rezept;
+}
+
+/** Pfad zur Rezeptdatei; leer, wenn der Dateiname nicht taugt. */
+function meal_recipe_path(array $rezept): string
+{
+    $name = (string) ($rezept['file'] ?? '');
+    if ($name === '' || basename($name) !== $name) {
+        return '';
+    }
+
+    return RECIPE_DIR . '/' . $name;
+}
+
+/** Mitglied, das das Rezept beigesteuert hat – nur, wenn es das Konto noch gibt. */
+function meal_recipe_author(array $meal): ?string
+{
+    $rezept = meal_recipe($meal);
+    if ($rezept === null) {
+        return null;
+    }
+
+    $id = (string) ($rezept['user_id'] ?? '');
+    $bekannt = meal_known_users();
+
+    return $id !== '' && isset($bekannt[$id]) ? $id : null;
+}
+
+/**
+ * Darf $user das Rezept ersetzen oder entfernen?
+ *
+ * Hochladen darf jedes Mitglied, solange noch keines hängt. Wer eines
+ * ersetzt oder wegnimmt, nimmt jemandem einen Punkt – das bleibt der Person,
+ * die es beigesteuert hat, dem Verfasser des Eintrags und der Verwaltung
+ * vorbehalten.
+ */
+function meal_recipe_may_manage(array $meal, array $user): bool
+{
+    if (meal_may_edit($meal, $user)) {
+        return true;
+    }
+
+    $rezept = meal_recipe($meal);
+
+    return $rezept !== null && (string) ($rezept['user_id'] ?? '') === (string) ($user['id'] ?? '');
+}
+
+/** Erlaubte Rezeptdateien: alles, was auch als Bild durchgeht – plus PDF. */
+function meal_recipe_kind(string $pfad): ?array
+{
+    $info = @getimagesize($pfad);
+    if ($info !== false && !empty($info[2]) && array_key_exists((int) $info[2], ALLOWED_IMAGE_TYPES)) {
+        return [
+            'ext'  => ALLOWED_IMAGE_TYPES[(int) $info[2]],
+            'mime' => (string) ($info['mime'] ?? 'application/octet-stream'),
+        ];
+    }
+
+    $kopf = '';
+    $fh   = @fopen($pfad, 'rb');
+    if ($fh !== false) {
+        $kopf = (string) fread($fh, 5);
+        fclose($fh);
+    }
+
+    return $kopf === '%PDF-' ? ['ext' => 'pdf', 'mime' => 'application/pdf'] : null;
+}
+
+/**
+ * Nimmt eine hochgeladene Rezeptdatei an und hängt sie an den Eintrag.
+ * Ein vorhandenes Rezept wird ersetzt, die alte Datei gelöscht – je Essen
+ * gibt es genau eines.
+ *
+ * @param array<string, mixed> $file Ein Eintrag aus $_FILES
+ * @return array{0: ?array, 1: ?string} [Rezept, Fehlertext]
+ */
+function meal_recipe_store(string $mealId, array $file, array $user): array
+{
+    $meal = meal_by_id($mealId);
+    if ($meal === null) {
+        return [null, 'Den Eintrag gibt es nicht mehr.'];
+    }
+
+    $fehler = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+    if ($fehler !== UPLOAD_ERR_OK) {
+        return [null, upload_error_text($fehler)];
+    }
+
+    $tmp = (string) ($file['tmp_name'] ?? '');
+    if ($tmp === '' || !is_uploaded_file($tmp)) {
+        return [null, 'Ungültiger Upload.'];
+    }
+
+    $groesse = (int) ($file['size'] ?? 0);
+    if ($groesse <= 0) {
+        return [null, 'Die Datei ist leer.'];
+    }
+    if ($groesse > MAX_RECIPE_BYTES) {
+        return [null, 'Die Datei ist größer als ' . format_bytes(MAX_RECIPE_BYTES) . '.'];
+    }
+
+    $art = meal_recipe_kind($tmp);
+    if ($art === null) {
+        return [null, 'Als Rezept gehen nur Bilder (JPG, PNG, GIF, WEBP) und PDF-Dateien.'];
+    }
+
+    store_ensure_dirs();
+
+    $name = date('Ymd-His') . '-' . bin2hex(random_bytes(6)) . '.' . $art['ext'];
+    if (!@move_uploaded_file($tmp, RECIPE_DIR . '/' . $name)) {
+        return [null, 'Die Datei konnte nicht gespeichert werden (Schreibrechte prüfen).'];
+    }
+    @chmod(RECIPE_DIR . '/' . $name, 0644);
+
+    $rezept = [
+        'file'          => $name,
+        'ext'           => $art['ext'],
+        'mime'          => $art['mime'],
+        'original_name' => mb_substr((string) ($file['name'] ?? 'Rezept'), 0, 180),
+        'size'          => $groesse,
+        'user_id'       => (string) $user['id'],
+        'uploaded_at'   => date('c'),
+    ];
+
+    $vorher = meal_recipe($meal);
+
+    store_mutate('meals', static function (array &$rows) use ($mealId, $rezept) {
+        foreach ($rows as $index => $row) {
+            if (($row['id'] ?? null) === $mealId) {
+                $rows[$index]['recipe'] = $rezept;
+
+                return true;
+            }
+        }
+
+        return false;
+    });
+
+    // Erst jetzt aufräumen: Wäre das Speichern schiefgegangen, hinge der
+    // Eintrag sonst an einer gelöschten Datei.
+    if ($vorher !== null) {
+        meal_recipe_unlink($vorher);
+    }
+
+    return [$rezept, null];
+}
+
+/** Löscht die Datei eines Rezepts von der Platte. */
+function meal_recipe_unlink(array $rezept): void
+{
+    $pfad = meal_recipe_path($rezept);
+    if ($pfad !== '' && is_file($pfad)) {
+        @unlink($pfad);
+    }
+}
+
+/** Nimmt das Rezept vom Eintrag und löscht die Datei. */
+function meal_recipe_delete(string $mealId): void
+{
+    $meal = meal_by_id($mealId);
+    if ($meal === null) {
+        return;
+    }
+
+    $rezept = meal_recipe($meal);
+
+    store_mutate('meals', static function (array &$rows) use ($mealId) {
+        foreach ($rows as $index => $row) {
+            if (($row['id'] ?? null) === $mealId) {
+                $rows[$index]['recipe'] = null;
+
+                return true;
+            }
+        }
+
+        return false;
+    });
+
+    if ($rezept !== null) {
+        meal_recipe_unlink($rezept);
+    }
 }
 
 /* --------------------------------------------------------------------- */
@@ -313,6 +519,9 @@ function meals_unlink_image(string $imageId): void
 
 function meal_delete(string $id): void
 {
+    $meal   = meal_by_id($id);
+    $rezept = $meal !== null ? meal_recipe($meal) : null;
+
     store_mutate('meals', static function (array &$rows) use ($id) {
         $rows = array_values(array_filter($rows, static function (array $row) use ($id) {
             return ($row['id'] ?? null) !== $id;
@@ -320,6 +529,10 @@ function meal_delete(string $id): void
 
         return true;
     });
+
+    if ($rezept !== null) {
+        meal_recipe_unlink($rezept);
+    }
 }
 
 /* --------------------------------------------------------------------- */
@@ -355,6 +568,11 @@ function meal_points_of(array $meal): array
 
     foreach (meal_role_ids($meal, 'host_id') as $id) {
         $punkte[$id] = ($punkte[$id] ?? 0.0) + MEAL_POINTS_HOST;
+    }
+
+    $rezept = meal_recipe_author($meal);
+    if ($rezept !== null) {
+        $punkte[$rezept] = ($punkte[$rezept] ?? 0.0) + MEAL_POINTS_RECIPE;
     }
 
     return $punkte;
@@ -400,6 +618,10 @@ function meals_scoreboard(?string $saison = null): array
         foreach (meal_role_ids($meal, 'host_id') as $id) {
             $zeilen[$id]['gastgeber'] = (int) ($zeilen[$id]['gastgeber'] ?? 0) + 1;
         }
+        $rezeptAutor = meal_recipe_author($meal);
+        if ($rezeptAutor !== null) {
+            $zeilen[$rezeptAutor]['rezept'] = (int) ($zeilen[$rezeptAutor]['rezept'] ?? 0) + 1;
+        }
         foreach (meal_participants($meal) as $id) {
             $zeilen[$id]['gerichte'] = (int) ($zeilen[$id]['gerichte'] ?? 0) + 1;
             $dabei[$id][$termin]     = true;
@@ -428,7 +650,8 @@ function meals_scoreboard(?string $saison = null): array
     foreach ($zeilen as $id => $zeile) {
         $zeile += [
             'basis' => 0.0, 'kochpunkte' => 0.0, 'koch' => 0, 'einkauf' => 0,
-            'spuelen' => 0, 'gastgeber' => 0, 'gerichte' => 0, 'mit_foto' => 0,
+            'spuelen' => 0, 'gastgeber' => 0, 'rezept' => 0, 'gerichte' => 0,
+            'mit_foto' => 0,
         ];
 
         // Serie: jeder dritte Stammtisch in Folge bringt Bonus
@@ -448,7 +671,8 @@ function meals_scoreboard(?string $saison = null): array
         }
 
         $allrounder = $zeile['koch'] > 0 && $zeile['einkauf'] > 0
-            && $zeile['spuelen'] > 0 && $zeile['gastgeber'] > 0;
+            && $zeile['spuelen'] > 0 && $zeile['gastgeber'] > 0
+            && $zeile['rezept'] > 0;
         if ($allrounder) {
             $bonus += MEAL_POINTS_ALLROUND;
         }
@@ -471,6 +695,7 @@ function meals_scoreboard(?string $saison = null): array
         'einkauf'     => 'einkauf',
         'gastgeber'   => 'gastgeber',
         'spuelen'     => 'spuelen',
+        'rezept'      => 'rezept',
         'foodblogger' => 'mit_foto',
     ];
     foreach ($spalten as $abzeichen => $spalte) {

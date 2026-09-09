@@ -26,7 +26,7 @@ function layout_header(string $title, ?array $user = null, bool $narrow = false)
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="<?= h(APP_NAME) ?>">
-<link rel="stylesheet" href="assets/style.css?v=6">
+<link rel="stylesheet" href="assets/style.css?v=7">
 </head>
 <body<?= $narrow ? ' class="narrow"' : '' ?>>
 <?php if ($user !== null): ?>
@@ -70,7 +70,7 @@ function layout_footer(bool $withScript = false): void
   <span><?= h(APP_NAME) ?> &middot; interner Bereich &middot; <?= date('Y') ?></span>
 </footer>
 <?php if ($withScript): ?>
-<script src="assets/app.js?v=5"></script>
+<script src="assets/app.js?v=6"></script>
 <?php endif; ?>
 </body>
 </html>

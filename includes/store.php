@@ -10,7 +10,7 @@ declare(strict_types=1);
 
 function store_ensure_dirs(): void
 {
-    foreach ([DATA_DIR, UPLOAD_DIR, THUMB_DIR, AVATAR_DIR] as $dir) {
+    foreach ([DATA_DIR, UPLOAD_DIR, THUMB_DIR, AVATAR_DIR, RECIPE_DIR] as $dir) {
         if (!is_dir($dir)) {
             @mkdir($dir, 0775, true);
         }

@@ -39,12 +39,20 @@ const DATA_DIR   = BASE_DIR . '/data';
 const UPLOAD_DIR = BASE_DIR . '/uploads';
 const THUMB_DIR  = BASE_DIR . '/uploads/thumbs';
 const AVATAR_DIR = BASE_DIR . '/uploads/avatars';
+const RECIPE_DIR = BASE_DIR . '/uploads/recipes';
 
 /** Maximale Größe je Bild (zusätzlich zu den php.ini-Limits, siehe .user.ini). */
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 /** Maximale Größe einer hochgeladenen Profilbild-Datei. */
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Maximale Größe eines Rezepts (Bild oder PDF). Fotografierte Rezepte rechnet
+ * der Browser vorher herunter, PDFs gehen unverändert durch – für die zählt
+ * am Ende ohnehin das Serverlimit aus der php.ini.
+ */
+const MAX_RECIPE_BYTES = 10 * 1024 * 1024;
 
 /**
  * Zielgröße beim Verkleinern **im Browser**, bevor ein Bild hochgeladen wird.
