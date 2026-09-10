@@ -629,6 +629,34 @@ label.btn { margin: 0; }
   border-color: transparent;
 }
 
+/* Farbton je Mitglied, gesetzt von avatar_html() in includes/images.php.
+   Als Klassen und nicht als style-Attribut, damit die Content-Security-Policy
+   ohne 'unsafe-inline' auskommt. 24 Stufen zu je 15°. */
+.avatar-h0  { --avatar-hue:   0; }
+.avatar-h1  { --avatar-hue:  15; }
+.avatar-h2  { --avatar-hue:  30; }
+.avatar-h3  { --avatar-hue:  45; }
+.avatar-h4  { --avatar-hue:  60; }
+.avatar-h5  { --avatar-hue:  75; }
+.avatar-h6  { --avatar-hue:  90; }
+.avatar-h7  { --avatar-hue: 105; }
+.avatar-h8  { --avatar-hue: 120; }
+.avatar-h9  { --avatar-hue: 135; }
+.avatar-h10 { --avatar-hue: 150; }
+.avatar-h11 { --avatar-hue: 165; }
+.avatar-h12 { --avatar-hue: 180; }
+.avatar-h13 { --avatar-hue: 195; }
+.avatar-h14 { --avatar-hue: 210; }
+.avatar-h15 { --avatar-hue: 225; }
+.avatar-h16 { --avatar-hue: 240; }
+.avatar-h17 { --avatar-hue: 255; }
+.avatar-h18 { --avatar-hue: 270; }
+.avatar-h19 { --avatar-hue: 285; }
+.avatar-h20 { --avatar-hue: 300; }
+.avatar-h21 { --avatar-hue: 315; }
+.avatar-h22 { --avatar-hue: 330; }
+.avatar-h23 { --avatar-hue: 345; }
+
 .avatar-xs { width: 20px; height: 20px; font-size: .6rem; }
 .avatar-sm { width: 32px; height: 32px; font-size: .85rem; }
 .avatar-lg { width: 56px; height: 56px; font-size: 1.5rem; }

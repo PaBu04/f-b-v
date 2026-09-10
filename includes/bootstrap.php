@@ -40,5 +40,9 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: same-origin');
 
+// Verrät sonst die genaue PHP-Version. Den von Plesk angehängten Teil bekommt
+// nur Apache weg, siehe .htaccess; dies hier greift auch ohne mod_headers.
+header_remove('X-Powered-By');
+
 store_ensure_dirs();
 session_boot();

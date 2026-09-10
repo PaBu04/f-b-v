@@ -250,7 +250,7 @@ layout_header('Mitgliederverwaltung', $admin);
                 </form>
 
                 <?php if ((string) $u['id'] !== (string) $admin['id']): ?>
-                <form method="post" class="inline-form" onsubmit="return confirm('Zugang „<?= h((string) $u['nickname']) ?>“ wirklich löschen?');">
+                <form method="post" class="inline-form" data-confirm="Zugang „<?= h((string) $u['nickname']) ?>“ wirklich löschen?">
                   <?= csrf_field() ?>
                   <input type="hidden" name="action" value="delete_user">
                   <input type="hidden" name="user_id" value="<?= h((string) $u['id']) ?>">

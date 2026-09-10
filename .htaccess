@@ -19,6 +19,22 @@ Options -Indexes
 # Suchmaschinen fernhalten (interner Bereich)
 <IfModule mod_headers.c>
     Header set X-Robots-Tag "noindex, nofollow"
+
+    # PHP-Version und Hosting-Panel nicht ausplaudern. Zweimal, weil Apache
+    # erfolgreiche Antworten und Fehlerantworten getrennt behandelt. Über
+    # .user.ini geht das nicht: expose_php ist PHP_INI_SYSTEM.
+    Header unset X-Powered-By
+    Header always unset X-Powered-By
+
+    # HSTS – der Browser wechselt von sich aus auf https, ohne je unverschlüsselt
+    # zu fragen. Ohne das bleibt die allererste Anfrage abfangbar.
+    # Vorerst kurz gehalten; nach erfolgreicher Prüfung auf 31536000 (ein Jahr)
+    # hochsetzen. Nur über HTTPS senden, so will es RFC 6797.
+    Header always set Strict-Transport-Security "max-age=300" "expr=%{HTTPS} == 'on' || %{HTTP:X-Forwarded-Proto} == 'https'"
+
+    # Zweite Verteidigungslinie gegen XSS. Alles kommt von der eigenen Herkunft;
+    # blob: braucht das Verkleinern im Browser (scaleFile() in assets/app.js).
+    Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; img-src 'self' blob:; script-src 'self'; style-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'"
 </IfModule>
 
 # Upload-Limits, falls PHP als Apache-Modul läuft.

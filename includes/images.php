@@ -394,7 +394,12 @@ function avatar_html(array $user, string $extraClass = ''): string
             . '" alt="" width="' . AVATAR_SIZE . '" height="' . AVATAR_SIZE . '" loading="lazy">';
     }
 
-    return '<span class="' . h($class) . ' avatar-fallback" style="--avatar-hue: ' . avatar_hue($user)
+    // Der Farbton kommt über eine Klasse statt über ein style-Attribut, sonst
+    // bräuchte die Content-Security-Policy style-src 'unsafe-inline'.
+    // 24 Stufen zu je 15° – fein genug, dass sich Mitglieder unterscheiden.
+    $stufe = intdiv(avatar_hue($user), 15);
+
+    return '<span class="' . h($class) . ' avatar-fallback avatar-h' . $stufe
         . '" aria-hidden="true">' . h(avatar_initial($user)) . '</span>';
 }
 

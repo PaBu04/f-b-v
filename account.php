@@ -220,7 +220,7 @@ layout_header('Mein Konto', $user, true);
     </form>
 
     <?php if ($geraete > 0): ?>
-      <form method="post" class="mt" onsubmit="return confirm('Alle Geräte abmelden?');">
+      <form method="post" class="mt" data-confirm="Alle Geräte abmelden?">
         <?= csrf_field() ?>
         <input type="hidden" name="action" value="notify_off">
         <button type="submit" class="btn btn-sm btn-danger">Alle Geräte abmelden</button>

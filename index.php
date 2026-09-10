@@ -137,7 +137,7 @@ layout_header('Galerie', $user);
           </div>
         </figcaption>
         <?php if (image_may_delete($image, $user)): ?>
-          <form class="tile-delete" method="post" action="delete.php" onsubmit="return confirm('Dieses Bild wirklich löschen?');">
+          <form class="tile-delete" method="post" action="delete.php" data-confirm="Dieses Bild wirklich löschen?">
             <?= csrf_field() ?>
             <input type="hidden" name="id" value="<?= h($imageId) ?>">
             <input type="hidden" name="return" value="<?= h($returnTo) ?>">
