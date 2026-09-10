@@ -288,28 +288,73 @@ function auth_logout(): void
 }
 
 /* --------------------------------------------------------------------- */
-/* Brute-Force-Schutz (pro IP)                                             */
+/* Brute-Force-Schutz (je Herkunft und je Konto)                           */
 /* --------------------------------------------------------------------- */
 
-function login_locked_until(): ?int
+/*
+ * Gezählt wird unter zwei Schlüsseln. Die Herkunft allein genügt nicht: Wer
+ * ein bestimmtes Konto durchprobiert und dabei die Adresse wechselt, läuft
+ * sonst in gar keine Sperre. Umgekehrt darf die Kontosperre nicht zu scharf
+ * sein, sonst setzt jemand mit zehn falschen Passwörtern ein fremdes Mitglied
+ * vor die Tür – deshalb die höhere Schwelle in LOGIN_MAX_ATTEMPTS_ACCOUNT.
+ */
+
+/** @return list<string> */
+function login_throttle_keys(string $username): array
 {
-    $ip  = client_ip();
-    $now = time();
+    $keys = ['ip:' . client_ip()];
+
+    $username = mb_strtolower(trim($username));
+    if ($username !== '') {
+        $keys[] = 'user:' . $username;
+    }
+
+    return $keys;
+}
+
+/**
+ * Schlüssel eines Eintrags. Einträge aus der Zeit vor der Kontosperre kennen
+ * nur das Feld "ip"; sie laufen ohnehin nach LOGIN_WINDOW aus.
+ *
+ * @param array<string, mixed> $row
+ */
+function login_throttle_key(array $row): string
+{
+    return (string) ($row['key'] ?? ('ip:' . ($row['ip'] ?? '')));
+}
+
+/** Obergrenze je nach Art des Schlüssels. */
+function login_throttle_limit(string $key): int
+{
+    return strncmp($key, 'user:', 5) === 0 ? LOGIN_MAX_ATTEMPTS_ACCOUNT : LOGIN_MAX_ATTEMPTS;
+}
+
+function login_locked_until(string $username = ''): ?int
+{
+    $keys = login_throttle_keys($username);
+    $now  = time();
+    $bis  = null;
+
     foreach (store_read('throttle') as $row) {
-        if (($row['ip'] ?? null) === $ip && (int) ($row['locked_until'] ?? 0) > $now) {
-            return (int) $row['locked_until'];
+        if (!in_array(login_throttle_key($row), $keys, true)) {
+            continue;
+        }
+
+        $until = (int) ($row['locked_until'] ?? 0);
+        if ($until > $now && ($bis === null || $until > $bis)) {
+            $bis = $until;
         }
     }
 
-    return null;
+    return $bis;
 }
 
-function login_note_failure(): void
+function login_note_failure(string $username = ''): void
 {
-    $ip  = client_ip();
-    $now = time();
+    $keys = login_throttle_keys($username);
+    $now  = time();
 
-    store_mutate('throttle', static function (array &$rows) use ($ip, $now) {
+    store_mutate('throttle', static function (array &$rows) use ($keys, $now) {
         // Abgelaufene Einträge aufräumen
         $rows = array_values(array_filter($rows, static function (array $row) use ($now) {
             $recent = ($now - (int) ($row['first_attempt'] ?? 0)) < LOGIN_WINDOW;
@@ -318,36 +363,48 @@ function login_note_failure(): void
             return $recent || $locked;
         }));
 
-        foreach ($rows as $index => $row) {
-            if (($row['ip'] ?? null) === $ip) {
-                $rows[$index]['attempts'] = (int) $row['attempts'] + 1;
-                if ($rows[$index]['attempts'] >= LOGIN_MAX_ATTEMPTS) {
-                    $rows[$index]['locked_until'] = $now + LOGIN_LOCK_SECONDS;
-                    $rows[$index]['attempts']     = 0;
+        foreach ($keys as $key) {
+            $bekannt = false;
+
+            foreach ($rows as $index => $row) {
+                if (login_throttle_key($row) !== $key) {
+                    continue;
+                }
+
+                $bekannt = true;
+                $rows[$index]['key']      = $key;
+                $rows[$index]['attempts'] = (int) ($row['attempts'] ?? 0) + 1;
+
+                if ($rows[$index]['attempts'] >= login_throttle_limit($key)) {
+                    $rows[$index]['locked_until']  = $now + LOGIN_LOCK_SECONDS;
+                    $rows[$index]['attempts']      = 0;
                     $rows[$index]['first_attempt'] = $now;
                 }
 
-                return true;
+                break;
+            }
+
+            if (!$bekannt) {
+                $rows[] = [
+                    'key'           => $key,
+                    'attempts'      => 1,
+                    'first_attempt' => $now,
+                    'locked_until'  => 0,
+                ];
             }
         }
-
-        $rows[] = [
-            'ip'            => $ip,
-            'attempts'      => 1,
-            'first_attempt' => $now,
-            'locked_until'  => 0,
-        ];
 
         return true;
     });
 }
 
-function login_reset_failures(): void
+function login_reset_failures(string $username = ''): void
 {
-    $ip = client_ip();
-    store_mutate('throttle', static function (array &$rows) use ($ip) {
-        $rows = array_values(array_filter($rows, static function (array $row) use ($ip) {
-            return ($row['ip'] ?? null) !== $ip;
+    $keys = login_throttle_keys($username);
+
+    store_mutate('throttle', static function (array &$rows) use ($keys) {
+        $rows = array_values(array_filter($rows, static function (array $row) use ($keys) {
+            return !in_array(login_throttle_key($row), $keys, true);
         }));
 
         return true;
@@ -357,7 +414,7 @@ function login_reset_failures(): void
 /** Prüft Zugangsdaten. @return array{0: ?array, 1: ?string} [Mitglied, Fehlertext] */
 function auth_attempt(string $username, string $password): array
 {
-    $lockedUntil = login_locked_until();
+    $lockedUntil = login_locked_until($username);
     if ($lockedUntil !== null) {
         $minutes = max(1, (int) ceil(($lockedUntil - time()) / 60));
 
@@ -370,12 +427,12 @@ function auth_attempt(string $username, string $password): array
     $hash = $user['password_hash'] ?? '$2y$10$usesomesillystringforsalt0000000000000000000000000000000000';
 
     if ($user === null || !password_verify($password, (string) $hash)) {
-        login_note_failure();
+        login_note_failure($username);
 
         return [null, 'Benutzername oder Passwort ist falsch.'];
     }
 
-    login_reset_failures();
+    login_reset_failures($username);
 
     // Hash bei Bedarf modernisieren
     if (password_needs_rehash((string) $user['password_hash'], PASSWORD_DEFAULT)) {

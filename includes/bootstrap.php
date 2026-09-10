@@ -39,7 +39,7 @@ require_once __DIR__ . '/meals.php';
 date_default_timezone_set(APP_TIMEZONE);
 
 header('X-Content-Type-Options: nosniff');
-header('X-Frame-Options: SAMEORIGIN');
+header('X-Frame-Options: DENY');
 header('Referrer-Policy: same-origin');
 
 // Verrät sonst die genaue PHP-Version. Den von Plesk angehängten Teil bekommt

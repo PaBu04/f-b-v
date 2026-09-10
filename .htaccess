@@ -28,13 +28,33 @@ Options -Indexes
 
     # HSTS – der Browser wechselt von sich aus auf https, ohne je unverschlüsselt
     # zu fragen. Ohne das bleibt die allererste Anfrage abfangbar.
-    # Vorerst kurz gehalten; nach erfolgreicher Prüfung auf 31536000 (ein Jahr)
-    # hochsetzen. Nur über HTTPS senden, so will es RFC 6797.
-    Header always set Strict-Transport-Security "max-age=300" "expr=%{HTTPS} == 'on' || %{HTTP:X-Forwarded-Proto} == 'https'"
+    #
+    # Ein Jahr, nur diese Domain. Bewusst ohne includeSubDomains: Plesk stellt
+    # für webmail.f-b-v.de ein eigenes Zertifikat aus, das mit der Erneuerung
+    # der Hauptdomain nichts zu tun hat – der Zwang würde trotzdem gelten.
+    # Ebenso bewusst ohne preload, das liesse sich nur über Monate zurücknehmen.
+    #
+    # Achtung: Läuft das Zertifikat ab, zeigt der Browser die Warnung ohne
+    # "Trotzdem fortfahren" – die Seite ist dann für alle unerreichbar, bis ein
+    # gültiges Zertifikat da ist. Deshalb muss die Let's-Encrypt-Erneuerung in
+    # Plesk auf automatisch stehen. Die Erneuerung selbst stört HSTS nicht, sie
+    # läuft über die ACME-Schnittstelle und nicht über einen Browser.
+    #
+    # Nur über HTTPS senden, so will es RFC 6797.
+    Header always set Strict-Transport-Security "max-age=31536000" "expr=%{HTTPS} == 'on' || %{HTTP:X-Forwarded-Proto} == 'https'"
 
     # Zweite Verteidigungslinie gegen XSS. Alles kommt von der eigenen Herkunft;
     # blob: braucht das Verkleinern im Browser (scaleFile() in assets/app.js).
-    Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; img-src 'self' blob:; script-src 'self'; style-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'"
+    Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' blob:; script-src 'self'; style-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'"
+
+    # Schnittstellen abschalten, die die Anwendung nicht braucht. Fällt später
+    # etwas davon doch an, muss es hier ausgenommen werden.
+    Header always set Permissions-Policy "accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), usb=(), xr-spatial-tracking=()"
+
+    # Fremde Seiten sollen weder ein geöffnetes Fenster noch die privaten Fotos
+    # aus image.php und avatar.php einbinden können.
+    Header always set Cross-Origin-Opener-Policy "same-origin"
+    Header always set Cross-Origin-Resource-Policy "same-origin"
 </IfModule>
 
 # Upload-Limits, falls PHP als Apache-Modul läuft.

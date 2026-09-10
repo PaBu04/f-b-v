@@ -90,10 +90,15 @@ const ALLOWED_IMAGE_TYPES = [
 /** Mindestlänge für Passwörter. */
 const PASSWORD_MIN_LENGTH = 8;
 
-/** Brute-Force-Schutz: Fehlversuche je IP, danach Sperre in Sekunden. */
-const LOGIN_MAX_ATTEMPTS = 10;
-const LOGIN_WINDOW       = 900;
-const LOGIN_LOCK_SECONDS = 900;
+/**
+ * Brute-Force-Schutz: Fehlversuche je Herkunft bzw. je Konto, danach Sperre
+ * in Sekunden. Die Kontoschwelle liegt höher, weil sonst jeder ein fremdes
+ * Mitglied mit ein paar falschen Passwörtern aussperren könnte.
+ */
+const LOGIN_MAX_ATTEMPTS         = 10;
+const LOGIN_MAX_ATTEMPTS_ACCOUNT = 20;
+const LOGIN_WINDOW               = 900;
+const LOGIN_LOCK_SECONDS         = 900;
 
 /** Session-Einstellungen. */
 const SESSION_NAME         = 'fbv_sid';
