@@ -14,7 +14,7 @@ $user = require_login();
 $wantsJson = strpos((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json') !== false;
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    redirect('index.php');
+    redirect('index.php'); 
 }
 
 csrf_require();
