@@ -39,12 +39,20 @@ const DATA_DIR   = BASE_DIR . '/data';
 const UPLOAD_DIR = BASE_DIR . '/uploads';
 const THUMB_DIR  = BASE_DIR . '/uploads/thumbs';
 const AVATAR_DIR = BASE_DIR . '/uploads/avatars';
+const RECIPE_DIR = BASE_DIR . '/uploads/recipes';
 
 /** Maximale Größe je Bild (zusätzlich zu den php.ini-Limits, siehe .user.ini). */
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 /** Maximale Größe einer hochgeladenen Profilbild-Datei. */
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Maximale Größe eines Rezepts (Bild oder PDF). Fotografierte Rezepte rechnet
+ * der Browser vorher herunter, PDFs gehen unverändert durch – für die zählt
+ * am Ende ohnehin das Serverlimit aus der php.ini.
+ */
+const MAX_RECIPE_BYTES = 10 * 1024 * 1024;
 
 /**
  * Zielgröße beim Verkleinern **im Browser**, bevor ein Bild hochgeladen wird.
@@ -90,3 +98,16 @@ const LOGIN_LOCK_SECONDS = 900;
 /** Session-Einstellungen. */
 const SESSION_NAME         = 'fbv_sid';
 const SESSION_IDLE_TIMEOUT = 60 * 60 * 12; // 12 Stunden ohne Aktivität
+
+/**
+ * Geburtstage: einmal am Tag geht ein Gruß an alle Mitglieder, die
+ * Benachrichtigungen dafür eingeschaltet haben.
+ *
+ * Auf dem Webspace läuft kein Cron-Dienst; den Versand stößt deshalb der erste
+ * Galerie-Aufruf des Tages ab BIRTHDAY_NOTIFY_HOUR an (siehe
+ * includes/birthdays.php). Schaut vor Mitternacht niemand vorbei, kommt der
+ * Gruß an diesem Tag nicht mehr – der Hinweis auf der Galerieseite bleibt
+ * davon unberührt.
+ */
+const BIRTHDAY_NOTIFY      = true;
+const BIRTHDAY_NOTIFY_HOUR = 8;

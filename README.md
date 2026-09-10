@@ -164,6 +164,83 @@ Beim Löschen eines Bildes oder eines Mitglieds werden die zugehörigen Likes
 mit entfernt. Im Adminbereich zeigt die Spalte „Likes" je Mitglied, wie viele
 Likes dessen Bilder insgesamt bekommen haben.
 
+## Stammtisch
+
+Der Reiter **Stammtisch** führt Buch darüber, was wöchentlich gekocht wurde.
+Ein Eintrag hält fest: das Gericht, das Datum, wer am Herd stand, wer
+eingekauft hat, wer abgespült hat und in wessen Küche gekocht wurde. Kochen,
+Einkauf und Abspülen dürfen mehrere Leute übernehmen. Dazu lässt sich ein
+bereits hochgeladenes Bild aus der Galerie verknüpfen.
+
+Auswählbar sind ausschließlich registrierte Mitglieder – die Namen kommen aus
+`users.json`, und der Server wirft beim Speichern alles weg, was nicht dazu
+gehört. Pflicht sind Gericht, Datum und mindestens eine Person am Herd; Küche,
+Einkauf und Abspülen dürfen leer bleiben, wenn sich niemand mehr erinnert.
+
+Zu jedem Essen passt außerdem **ein Rezept** – ein Foto vom Kochbuch oder ein
+PDF. Es hängt direkt am Eintrag, nicht in der Galerie, und wird über
+`recipe.php` ausgeliefert; die Datei selbst liegt in `uploads/recipes/` und ist
+wie alle Uploads per `.htaccess` gesperrt. Erlaubt sind JPG, PNG, GIF, WEBP und
+PDF – geprüft wird am Inhalt der Datei, nicht an ihrer Endung. Fotografierte
+Rezepte rechnet der Browser vor dem Hochladen herunter (dieselbe Umrechnung wie
+in der Galerie), PDFs gehen unverändert durch und müssen unter dem Serverlimit
+bleiben.
+
+Hochladen darf jedes Mitglied, auch bei fremden Einträgen. Ersetzen und
+entfernen darf nur, wer das Rezept beigesteuert hat, wer den Eintrag angelegt
+hat, oder die Verwaltung – dahinter steckt ein Punkt, den man nicht beliebig
+verschieben können soll. Je Essen gibt es genau eines: Ein neues ersetzt das
+alte, die alte Datei wird dabei gelöscht.
+
+Anlegen darf jedes Mitglied. Ändern und löschen darf, wer den Eintrag verfasst
+hat – und die Verwaltung. Die Liste ist nach Kalenderwochen gruppiert, das
+Datum bleibt trotzdem am Eintrag, damit auch zwei Abende in einer Woche
+nebeneinander stehen können.
+
+### Punkte
+
+Die Punkte sind **nirgends gespeichert**. Sie ergeben sich aus den Einträgen
+und werden bei jedem Aufruf neu berechnet. Wird ein Eintrag korrigiert, stimmt
+die Tabelle sofort wieder – und niemand kann an einem Punktestand drehen, ohne
+dass es am Eintrag sichtbar wird.
+
+| Wofür | Punkte |
+|-------|--------|
+| Kochen (Verantwortung am Herd) | 5, geteilt durch die Zahl der Köche |
+| … mit verknüpftem Foto | 6 statt 5, ebenfalls geteilt |
+| Einkauf | 3, geteilt durch die Zahl der Einkaufenden |
+| Abspülen | 2, geteilt durch die Zahl der Spülenden |
+| Küche gestellt | 2 |
+| Rezept hochgeladen | 1 |
+| Serie: je drei Stammtische in Folge, an denen jemand beteiligt war | +2 |
+| Allrounder: in einer Saison einmal gekocht, eingekauft, abgespült, die Küche gestellt und ein Rezept beigesteuert | +5 |
+
+Geteilt heißt geteilt: Kochen zwei Leute zusammen, bekommt jeder 2,5 Punkte.
+Wer allein kocht, bekommt alle fünf. Für die Serie zählen die Stammtische, die
+es wirklich gab – wer bei dreien hintereinander dabei war, bekommt den Bonus,
+egal wie viele Wochen dazwischen lagen.
+
+Aus den Saisonpunkten ergibt sich eine Stufe: **Küchenhilfe** ab 0,
+**Sous-Chef** ab 10, **Küchenleitung** ab 25, **Sterneküche** ab 50 und
+**Legende** ab 100. Dazu vergibt jede Saison vier Abzeichen an die jeweils
+Besten – bei Gleichstand an alle davon:
+
+- **Küchenchef** – die meisten Punkte am Herd
+- **Einkaufsheld** – am häufigsten eingekauft
+- **Gastgeber** – am häufigsten die Küche gestellt
+- **Spülmeister** – am häufigsten abgespült
+- **Rezeptsammler** – die meisten Rezepte beigesteuert
+- **Foodblogger** – die meisten Gerichte mit Foto
+
+Eine Saison ist ein Kalenderjahr; über den Umschalter oben rechts lässt sich
+jedes Jahr einzeln und die ewige Tabelle ansehen.
+
+Wird ein Bild aus der Galerie gelöscht, verschwindet die Verknüpfung aus den
+Einträgen und der Foto-Zuschlag mit ihr. Wird ein Eintrag gelöscht, geht sein
+Rezept mit – es bleiben keine verwaisten Dateien liegen. Wird ein Mitglied gelöscht, bleiben
+die Einträge als Vereinsgeschichte stehen; die Person fällt nur aus den Rollen
+und der Tabelle heraus.
+
 ## Datenablage
 
 | Ort               | Inhalt                                             |
@@ -172,9 +249,12 @@ Likes dessen Bilder insgesamt bekommen haben.
 | `data/images.json`| Metadaten der Bilder                                |
 | `data/likes.json` | Likes (je Mitglied und Bild höchstens einer)        |
 | `data/throttle.json` | Fehlversuche beim Login je IP                    |
+| `data/birthday_notices.json` | verschickte Geburtstagsgrüße je Tag      |
+| `data/meals.json` | Stammtischessen mit Rollen und Bildverknüpfung  |
 | `uploads/`        | Originalbilder                                      |
 | `uploads/thumbs/` | Vorschaubilder (JPEG, längste Kante 700 px)         |
 | `uploads/avatars/`| Profilbilder (JPEG, 320 × 320 px)                   |
+| `uploads/recipes/`| Rezepte zu den Stammtischessen (Bild oder PDF)      |
 
 Schreibzugriffe laufen über exklusive Dateisperren (`flock`), gleichzeitige
 Uploads mehrerer Mitglieder sind damit unproblematisch.
@@ -184,9 +264,10 @@ Sicherung: es genügt, `data/` und `uploads/` zu kopieren.
 ## Benachrichtigungen
 
 Mitglieder können sich per Web Push benachrichtigen lassen, wenn jemand neue
-Bilder hochlädt oder wenn einem ihrer Bilder ein Like gegeben wird. Ein- und
-ausgeschaltet wird das unter **Mein Konto → Benachrichtigungen**, getrennt nach
-Anlass; angemeldet wird **je Gerät** einzeln.
+Bilder hochlädt, wenn einem ihrer Bilder ein Like gegeben wird oder wenn jemand
+Geburtstag hat. Ein- und ausgeschaltet wird das unter
+**Mein Konto → Benachrichtigungen**, getrennt nach Anlass; angemeldet wird
+**je Gerät** einzeln.
 
 Umgesetzt ist das ohne Fremdbibliothek in [includes/push.php](includes/push.php):
 
@@ -212,6 +293,30 @@ es [manifest.webmanifest](manifest.webmanifest). Auf Android genügt der Browser
 
 Der Zustand steht in der Verwaltung unter „Serverumgebung": ob Push
 einsatzbereit ist, wie viele Geräte angemeldet sind und worüber verschickt wird.
+
+## Geburtstage
+
+Das Geburtsdatum steht ohnehin an jedem Konto, also erinnert die Seite von
+selbst daran. Wer heute Geburtstag hat, bekommt in der Mitgliederliste die
+Marke **Heute**, und über der Galerie steht ein Hinweis – für die
+Geburtstagskinder selbst als Glückwunsch.
+
+Zusätzlich geht einmal am Tag eine Benachrichtigung an alle, die das unter
+**Mein Konto → Benachrichtigungen** eingeschaltet haben; das Geburtstagskind
+selbst bekommt einen eigenen Gruß.
+
+Auf dem Webspace läuft kein Cron-Dienst, deshalb stößt **der erste Aufruf der
+Galerie** ab 8 Uhr den Versand an ([includes/birthdays.php](includes/birthdays.php)).
+Damit zwei gleichzeitige Besuche nicht denselben Gruß doppelt verschicken, wird
+der Tag vorher unter Dateisperre in `data/birthday_notices.json` beansprucht –
+verschickt wird nur einmal. Schaut an einem Tag niemand vorbei, entfällt die
+Benachrichtigung; der Hinweis auf der Seite erscheint trotzdem, sobald jemand
+kommt. Uhrzeit und Abschalter stehen als `BIRTHDAY_NOTIFY_HOUR` und
+`BIRTHDAY_NOTIFY` in `includes/config.php`, der Zustand („zuletzt am …") in der
+Verwaltung unter „Serverumgebung".
+
+Der 29. Februar wird in Jahren ohne Schalttag am 1. März gefeiert – so rechnet
+auch § 188 BGB.
 
 ## Erscheinungsbild
 
@@ -254,7 +359,7 @@ verschiebt die Navigation daher nicht mehr.
 
 Alle Stellschrauben stehen in `includes/config.php`: maximale Dateigröße,
 Größe der Vorschaubilder, Bilder pro Seite, Mindestlänge der Passwörter,
-Login-Sperre und Session-Timeout.
+Login-Sperre, Session-Timeout und die Geburtstagsgrüße.
 
 ## Anforderungen
 

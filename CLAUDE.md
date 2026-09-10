@@ -26,13 +26,15 @@ includes/        Programmcode, nicht direkt aufrufbar (.htaccess sperrt)
   images.php     Upload, Vorschaubilder, Profilbilder
   likes.php      Likes mit Zwischenspeicher
   push.php       Web Push nach RFC 8291/8292, komplett selbst gebaut
+  birthdays.php  Geburtstage: Hinweis auf der Seite und ein Gruß je Tag
+  meals.php      Stammtisch: Essensliste, Rollen und Punktetabelle
   zip.php        ZIP-Ausgabe ohne Zwischendatei
   helpers.php    h(), CSRF, Meldungen, Formatierung
   layout.php     Kopf- und Fußbereich jeder Seite
 *.php            eine Datei je Seite bzw. Endpunkt, kein Router
 assets/          app.js und style.css
 data/            JSON-Dateien zur Laufzeit  — NIE committen
-uploads/         Bilder, Vorschauen, Profilbilder — NIE committen
+uploads/         Bilder, Vorschauen, Profilbilder, Rezepte — NIE committen
 ```
 
 Es gibt keinen Router und keine Vorlagen-Sprache. Jede Seite ist eine
@@ -40,8 +42,12 @@ PHP-Datei, die `includes/bootstrap.php` einbindet und HTML ausgibt.
 
 ## Ablage
 
-Sechs JSON-Sammlungen in `data/`: `users`, `images`, `likes`,
-`push_subscriptions`, `push_keys`, `throttle`.
+Acht JSON-Sammlungen in `data/`: `users`, `images`, `likes`,
+`push_subscriptions`, `push_keys`, `throttle`, `birthday_notices`, `meals`.
+
+Die Stammtischpunkte stehen **nicht** in der Ablage – sie werden bei jedem
+Aufruf aus `meals` berechnet. Wer die Punkteregeln ändert, ändert damit
+rückwirkend die ganze Tabelle; das ist Absicht.
 
 **Lesen** mit `store_read('users')`. **Schreiben ausschließlich** mit
 `store_mutate('users', function (array &$daten) { ... })` — das sperrt die

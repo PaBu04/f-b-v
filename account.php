@@ -57,8 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'notify') {
         user_update((string) $user['id'], [
             'notify' => [
-                'uploads' => !empty($_POST['notify_uploads']),
-                'likes'   => !empty($_POST['notify_likes']),
+                'uploads'   => !empty($_POST['notify_uploads']),
+                'likes'     => !empty($_POST['notify_likes']),
+                'birthdays' => !empty($_POST['notify_birthdays']),
             ],
         ]);
         flash('success', 'Deine Benachrichtigungen wurden gespeichert.');
@@ -116,8 +117,9 @@ foreach (likes_all() as $like) {
 $avatarLimit = min(MAX_AVATAR_BYTES, effective_upload_limit());
 
 $einstellungen = is_array($user['notify'] ?? null) ? $user['notify'] : [];
-$notifyUploads = !array_key_exists('uploads', $einstellungen) || !empty($einstellungen['uploads']);
-$notifyLikes   = !array_key_exists('likes', $einstellungen) || !empty($einstellungen['likes']);
+$notifyUploads   = !array_key_exists('uploads', $einstellungen) || !empty($einstellungen['uploads']);
+$notifyLikes     = !array_key_exists('likes', $einstellungen) || !empty($einstellungen['likes']);
+$notifyBirthdays = !array_key_exists('birthdays', $einstellungen) || !empty($einstellungen['birthdays']);
 $pushFehler    = null;
 $pushKeys      = push_keys($pushFehler);
 $geraete       = count(push_subscriptions((string) $user['id']));
@@ -215,6 +217,10 @@ layout_header('Mein Konto', $user, true);
       <label class="checkbox">
         <input type="checkbox" name="notify_likes" value="1" <?= $notifyLikes ? 'checked' : '' ?>>
         Wenn jemandem eines meiner Bilder gefällt
+      </label>
+      <label class="checkbox">
+        <input type="checkbox" name="notify_birthdays" value="1" <?= $notifyBirthdays ? 'checked' : '' ?>>
+        Wenn jemand Geburtstag hat
       </label>
       <button type="submit" class="btn">Auswahl speichern</button>
     </form>

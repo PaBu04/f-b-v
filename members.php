@@ -30,13 +30,17 @@ layout_header('Mitglieder', $user);
 <div class="member-grid">
   <?php foreach ($members as $member): ?>
     <?php $bilder = (int) ($imageCount[(string) $member['id']] ?? 0); ?>
-    <article class="member-card">
+    <?php $hatHeute = birthday_is_today((string) $member['birthdate']); ?>
+    <article class="member-card<?= $hatHeute ? ' is-birthday' : '' ?>">
       <?= avatar_html($member, 'avatar-lg') ?>
       <div class="member-body">
         <span class="member-name">
           <?= h((string) $member['nickname']) ?>
           <?php if ((string) $member['id'] === (string) $user['id']): ?>
             <span class="badge">Du</span>
+          <?php endif; ?>
+          <?php if ($hatHeute): ?>
+            <span class="badge badge-warn" title="Heute Geburtstag">Heute</span>
           <?php endif; ?>
         </span>
         <span class="member-meta">

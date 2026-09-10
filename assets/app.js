@@ -16,6 +16,221 @@
     });
   }
 
+  /* ---------------------------------------- Bilder verkleinern ----- */
+
+  /*
+   * Der Hoster begrenzt Uploads auf 2 MB, Handyfotos sind größer. Deshalb
+   * rechnet der Browser sie herunter, bevor sie losgeschickt werden – für die
+   * Galerie ebenso wie für ein abfotografiertes Rezept.
+   *
+   * Das hat einen zweiten Grund: Ein <input type="file"> hält nur einen
+   * Verweis auf die Datei. Beim Absenden liest der Browser sie erneut von der
+   * Platte und bricht mit "Your file couldn't be accessed" ab, wenn sie
+   * inzwischen verschoben oder verändert wurde – auf Handys passiert das
+   * regelmäßig, weil Verweise aus der Fotogalerie nur kurz gelten. Nach der
+   * Aufbereitung liegt das Bild im Speicher, dieser Fehler ist damit
+   * ausgeschlossen.
+   */
+
+  var kannVerkleinern = !!window.File
+    && !!window.URL
+    && !!window.HTMLCanvasElement
+    && !!HTMLCanvasElement.prototype.toBlob;
+
+  // Bild laden – nach Möglichkeit mit Beachtung der EXIF-Ausrichtung
+  var loadImage = function (file) {
+    if (window.createImageBitmap) {
+      try {
+        return createImageBitmap(file, { imageOrientation: 'from-image' })
+          .then(function (bitmap) {
+            return { source: bitmap, width: bitmap.width, height: bitmap.height, bitmap: bitmap };
+          })
+          .catch(function () { return loadViaElement(file); });
+      } catch (e) {
+        return loadViaElement(file);
+      }
+    }
+    return loadViaElement(file);
+  };
+
+  var loadViaElement = function (file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var image = new Image();
+      image.onload = function () {
+        resolve({ source: image, width: image.naturalWidth, height: image.naturalHeight, url: url });
+      };
+      image.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error('Bild nicht lesbar'));
+      };
+      image.src = url;
+    });
+  };
+
+  var releaseImage = function (loaded) {
+    if (loaded.bitmap && loaded.bitmap.close) {
+      loaded.bitmap.close();
+    }
+    if (loaded.url) {
+      URL.revokeObjectURL(loaded.url);
+    }
+  };
+
+  /*
+   * Kopiert eine Datei in den Arbeitsspeicher, damit beim Absenden nicht
+   * erneut auf die Platte zugegriffen werden muss.
+   */
+  var toMemory = function (file) {
+    if (!file.arrayBuffer) {
+      return Promise.resolve(file);
+    }
+    return file.arrayBuffer().then(function (buffer) {
+      try {
+        return new File([buffer], file.name, { type: file.type, lastModified: file.lastModified });
+      } catch (e) {
+        return file;
+      }
+    }).catch(function () {
+      return file;
+    });
+  };
+
+  /*
+   * Zielformat: Was der Server annimmt, bleibt erhalten. Alles andere –
+   * vor allem HEIC von iPhones – wird zu JPEG, sonst lehnt der Server es ab.
+   */
+  var outputType = function (type) {
+    return (type === 'image/png' || type === 'image/webp') ? type : 'image/jpeg';
+  };
+
+  var outputName = function (name, type) {
+    var endung = type === 'image/png' ? 'png' : (type === 'image/webp' ? 'webp' : 'jpg');
+    return name.replace(/\.[^.\\/]+$/, '') + '.' + endung;
+  };
+
+  /** Zeichnet das geladene Bild in der gewünschten Größe und gibt einen Blob zurück. */
+  var render = function (loaded, edge, type, guete) {
+    var longest = Math.max(loaded.width, loaded.height);
+    var factor = Math.min(1, edge / longest);
+    var width = Math.max(1, Math.round(loaded.width * factor));
+    var height = Math.max(1, Math.round(loaded.height * factor));
+
+    var canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    var context = canvas.getContext('2d');
+    if (!context) {
+      return Promise.resolve(null);
+    }
+
+    // JPEG kennt keine Transparenz – weißer Grund statt schwarz
+    if (type === 'image/jpeg') {
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, width, height);
+    }
+    context.drawImage(loaded.source, 0, 0, width, height);
+
+    return new Promise(function (resolve) {
+      try {
+        canvas.toBlob(function (blob) { resolve(blob || null); }, type, guete);
+      } catch (e) {
+        resolve(null);
+      }
+    });
+  };
+
+  /*
+   * Mehrere Stufen: Reicht die erste nicht unter das Serverlimit, wird
+   * stärker verkleinert. So bleibt kein Bild hängen, nur weil es besonders
+   * detailreich ist.
+   */
+  var stufen = function (maxEdge, quality) {
+    return [
+      { edge: maxEdge, guete: quality },
+      { edge: maxEdge, guete: Math.max(0.6, quality - 0.15) },
+      { edge: Math.round(maxEdge * 0.75), guete: 0.75 },
+      { edge: Math.round(maxEdge * 0.6), guete: 0.7 }
+    ];
+  };
+
+  var bildVerkleinern = function (file, maxEdge, quality, limit, zweiterVersuch) {
+    var quelltyp = file.type || '';
+
+    // Animierte GIFs bleiben unangetastet, sonst wäre die Animation weg
+    if (quelltyp === 'image/gif') {
+      return toMemory(file);
+    }
+    // Leerer Typ kommt bei manchen Android-Dateiauswahlen vor – dann trotzdem
+    // versuchen; misslingt es, greift der Rückfall weiter unten.
+    if (quelltyp !== '' && quelltyp.indexOf('image/') !== 0) {
+      return toMemory(file);
+    }
+
+    var typ = outputType(quelltyp);
+    var passt = quelltyp === typ;
+
+    return loadImage(file).then(function (loaded) {
+      if (!loaded.width || !loaded.height) {
+        releaseImage(loaded);
+        throw new Error('Bild ohne Maße');
+      }
+
+      // Klein genug und in einem Format, das der Server kennt: unverändert lassen
+      if (passt
+          && Math.max(loaded.width, loaded.height) <= maxEdge
+          && (limit <= 0 || file.size <= limit)) {
+        releaseImage(loaded);
+        return toMemory(file);
+      }
+
+      return stufen(maxEdge, quality).reduce(function (kette, stufe) {
+        return kette.then(function (bisher) {
+          if (bisher && limit > 0 && bisher.size <= limit) {
+            return bisher; // schon gut genug
+          }
+          if (bisher && limit <= 0) {
+            return bisher;
+          }
+          return render(loaded, stufe.edge, typ, stufe.guete).then(function (blob) {
+            if (!blob) {
+              return bisher;
+            }
+            return (!bisher || blob.size < bisher.size) ? blob : bisher;
+          });
+        });
+      }, Promise.resolve(null)).then(function (blob) {
+        releaseImage(loaded);
+
+        if (!blob) {
+          throw new Error('Umwandlung fehlgeschlagen');
+        }
+        // Nur übernehmen, wenn dabei wirklich etwas gespart wurde
+        if (passt && blob.size >= file.size) {
+          return toMemory(file);
+        }
+        try {
+          return new File([blob], outputName(file.name, typ), { type: typ, lastModified: Date.now() });
+        } catch (e) {
+          return toMemory(file);
+        }
+      });
+    }).catch(function () {
+      /*
+       * Auf Handys schlägt der erste Zugriff auf ein Bild aus der Galerie
+       * gelegentlich fehl – etwa weil es noch aus der Cloud geladen wird
+       * oder der Speicher gerade knapp ist. Einmal kurz warten und erneut
+       * versuchen behebt genau das.
+       */
+      if (!zweiterVersuch) {
+        return new Promise(function (weiter) { setTimeout(weiter, 400); })
+          .then(function () { return bildVerkleinern(file, maxEdge, quality, limit, true); });
+      }
+      return toMemory(file);
+    });
+  };
+
+
   /* ---------------------------------------- Upload ----------------- */
 
   var input = document.getElementById('files');
@@ -68,221 +283,17 @@
 
     /* ------------------------------------ Verkleinern im Gerät ---- */
 
-    /*
-     * Der Hoster begrenzt Uploads auf 2 MB, Handyfotos sind größer. Deshalb
-     * rechnet der Browser sie herunter – und zwar direkt nach der Auswahl.
-     *
-     * Das hat einen zweiten Grund: Ein <input type="file"> hält nur einen
-     * Verweis auf die Datei. Beim Absenden liest der Browser sie erneut von
-     * der Platte und bricht mit "Your file couldn't be accessed" ab, wenn sie
-     * inzwischen verschoben oder verändert wurde – auf Handys passiert das
-     * regelmäßig, weil Verweise aus der Fotogalerie nur kurz gelten. Nach der
-     * Aufbereitung liegen die Bilder im Speicher, dieser Fehler ist damit
-     * ausgeschlossen.
-     */
+    /* Die Umrechnung selbst steht oben, sie wird auch für Rezepte gebraucht. */
     var maxEdge = parseInt(form.getAttribute('data-max-edge'), 10) || 0;
     var quality = (parseInt(form.getAttribute('data-quality'), 10) || 85) / 100;
     var limit = parseInt(form.getAttribute('data-limit'), 10) || 0;
 
-    var canScale = maxEdge > 0
-      && !!window.File
-      && !!window.URL
-      && !!window.HTMLCanvasElement
-      && !!HTMLCanvasElement.prototype.toBlob;
+    var canScale = maxEdge > 0 && kannVerkleinern;
 
     var canSend = !!(window.FormData && window.XMLHttpRequest);
 
-    // Bild laden – nach Möglichkeit mit Beachtung der EXIF-Ausrichtung
-    var loadImage = function (file) {
-      if (window.createImageBitmap) {
-        try {
-          return createImageBitmap(file, { imageOrientation: 'from-image' })
-            .then(function (bitmap) {
-              return { source: bitmap, width: bitmap.width, height: bitmap.height, bitmap: bitmap };
-            })
-            .catch(function () { return loadViaElement(file); });
-        } catch (e) {
-          return loadViaElement(file);
-        }
-      }
-      return loadViaElement(file);
-    };
-
-    var loadViaElement = function (file) {
-      return new Promise(function (resolve, reject) {
-        var url = URL.createObjectURL(file);
-        var image = new Image();
-        image.onload = function () {
-          resolve({ source: image, width: image.naturalWidth, height: image.naturalHeight, url: url });
-        };
-        image.onerror = function () {
-          URL.revokeObjectURL(url);
-          reject(new Error('Bild nicht lesbar'));
-        };
-        image.src = url;
-      });
-    };
-
-    var releaseImage = function (loaded) {
-      if (loaded.bitmap && loaded.bitmap.close) {
-        loaded.bitmap.close();
-      }
-      if (loaded.url) {
-        URL.revokeObjectURL(loaded.url);
-      }
-    };
-
-    /*
-     * Kopiert eine Datei in den Arbeitsspeicher, damit beim Absenden nicht
-     * erneut auf die Platte zugegriffen werden muss.
-     */
-    var toMemory = function (file) {
-      if (!file.arrayBuffer) {
-        return Promise.resolve(file);
-      }
-      return file.arrayBuffer().then(function (buffer) {
-        try {
-          return new File([buffer], file.name, { type: file.type, lastModified: file.lastModified });
-        } catch (e) {
-          return file;
-        }
-      }).catch(function () {
-        return file;
-      });
-    };
-
-    /*
-     * Zielformat: Was der Server annimmt, bleibt erhalten. Alles andere –
-     * vor allem HEIC von iPhones – wird zu JPEG, sonst lehnt der Server es ab.
-     */
-    var outputType = function (type) {
-      return (type === 'image/png' || type === 'image/webp') ? type : 'image/jpeg';
-    };
-
-    var outputName = function (name, type) {
-      var endung = type === 'image/png' ? 'png' : (type === 'image/webp' ? 'webp' : 'jpg');
-      return name.replace(/\.[^.\\/]+$/, '') + '.' + endung;
-    };
-
-    /** Zeichnet das geladene Bild in der gewünschten Größe und gibt einen Blob zurück. */
-    var render = function (loaded, edge, type, guete) {
-      var longest = Math.max(loaded.width, loaded.height);
-      var factor = Math.min(1, edge / longest);
-      var width = Math.max(1, Math.round(loaded.width * factor));
-      var height = Math.max(1, Math.round(loaded.height * factor));
-
-      var canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      var context = canvas.getContext('2d');
-      if (!context) {
-        return Promise.resolve(null);
-      }
-
-      // JPEG kennt keine Transparenz – weißer Grund statt schwarz
-      if (type === 'image/jpeg') {
-        context.fillStyle = '#ffffff';
-        context.fillRect(0, 0, width, height);
-      }
-      context.drawImage(loaded.source, 0, 0, width, height);
-
-      return new Promise(function (resolve) {
-        try {
-          canvas.toBlob(function (blob) { resolve(blob || null); }, type, guete);
-        } catch (e) {
-          resolve(null);
-        }
-      });
-    };
-
-    /*
-     * Mehrere Stufen: Reicht die erste nicht unter das Serverlimit, wird
-     * stärker verkleinert. So bleibt kein Bild hängen, nur weil es besonders
-     * detailreich ist.
-     */
-    var stufen = function () {
-      return [
-        { edge: maxEdge, guete: quality },
-        { edge: maxEdge, guete: Math.max(0.6, quality - 0.15) },
-        { edge: Math.round(maxEdge * 0.75), guete: 0.75 },
-        { edge: Math.round(maxEdge * 0.6), guete: 0.7 }
-      ];
-    };
-
-    var scaleFile = function (file, zweiterVersuch) {
-      var quelltyp = file.type || '';
-
-      // Animierte GIFs bleiben unangetastet, sonst wäre die Animation weg
-      if (quelltyp === 'image/gif') {
-        return toMemory(file);
-      }
-      // Leerer Typ kommt bei manchen Android-Dateiauswahlen vor – dann trotzdem
-      // versuchen; misslingt es, greift der Rückfall weiter unten.
-      if (quelltyp !== '' && quelltyp.indexOf('image/') !== 0) {
-        return toMemory(file);
-      }
-
-      var typ = outputType(quelltyp);
-      var passt = quelltyp === typ;
-
-      return loadImage(file).then(function (loaded) {
-        if (!loaded.width || !loaded.height) {
-          releaseImage(loaded);
-          throw new Error('Bild ohne Maße');
-        }
-
-        // Klein genug und in einem Format, das der Server kennt: unverändert lassen
-        if (passt
-            && Math.max(loaded.width, loaded.height) <= maxEdge
-            && (limit <= 0 || file.size <= limit)) {
-          releaseImage(loaded);
-          return toMemory(file);
-        }
-
-        return stufen().reduce(function (kette, stufe) {
-          return kette.then(function (bisher) {
-            if (bisher && limit > 0 && bisher.size <= limit) {
-              return bisher; // schon gut genug
-            }
-            if (bisher && limit <= 0) {
-              return bisher;
-            }
-            return render(loaded, stufe.edge, typ, stufe.guete).then(function (blob) {
-              if (!blob) {
-                return bisher;
-              }
-              return (!bisher || blob.size < bisher.size) ? blob : bisher;
-            });
-          });
-        }, Promise.resolve(null)).then(function (blob) {
-          releaseImage(loaded);
-
-          if (!blob) {
-            throw new Error('Umwandlung fehlgeschlagen');
-          }
-          // Nur übernehmen, wenn dabei wirklich etwas gespart wurde
-          if (passt && blob.size >= file.size) {
-            return toMemory(file);
-          }
-          try {
-            return new File([blob], outputName(file.name, typ), { type: typ, lastModified: Date.now() });
-          } catch (e) {
-            return toMemory(file);
-          }
-        });
-      }).catch(function () {
-        /*
-         * Auf Handys schlägt der erste Zugriff auf ein Bild aus der Galerie
-         * gelegentlich fehl – etwa weil es noch aus der Cloud geladen wird
-         * oder der Speicher gerade knapp ist. Einmal kurz warten und erneut
-         * versuchen behebt genau das.
-         */
-        if (!zweiterVersuch) {
-          return new Promise(function (weiter) { setTimeout(weiter, 400); })
-            .then(function () { return scaleFile(file, true); });
-        }
-        return toMemory(file);
-      });
+    var scaleFile = function (file) {
+      return bildVerkleinern(file, maxEdge, quality, limit);
     };
 
     // Nacheinander statt gleichzeitig, damit der Speicher nicht überläuft
@@ -740,6 +751,128 @@
       sendLike(likeForm);
     });
   });
+
+  /* ---------------------------------------- Rezepte ---------------- */
+
+  /*
+   * Ein abfotografiertes Rezept ist genauso groß wie jedes andere Handyfoto
+   * und käme am Serverlimit nicht vorbei. Es wird deshalb direkt nach der
+   * Auswahl heruntergerechnet und zurück ins Feld gelegt. PDFs bleiben, wie
+   * sie sind. Ohne JavaScript geht die Datei unverändert los – kleine Bilder
+   * und PDFs unter dem Limit kommen auch so durch.
+   */
+  Array.prototype.forEach.call(document.querySelectorAll('[data-recipe-form]'), function (form) {
+    var feld = form.querySelector('input[type="file"]');
+    var knopf = form.querySelector('button[type="submit"]');
+    var hinweis = form.querySelector('.recipe-note');
+
+    if (!feld || !kannVerkleinern || !window.DataTransfer) {
+      return;
+    }
+
+    var maxEdge = parseInt(form.getAttribute('data-max-edge'), 10) || 0;
+    var quality = (parseInt(form.getAttribute('data-quality'), 10) || 85) / 100;
+    var limit = parseInt(form.getAttribute('data-limit'), 10) || 0;
+
+    if (maxEdge <= 0) {
+      return;
+    }
+
+    var melde = function (text, art) {
+      if (!hinweis) {
+        return;
+      }
+      hinweis.textContent = text || '';
+      hinweis.className = 'recipe-note' + (art ? ' is-' + art : '');
+      hinweis.hidden = !text;
+    };
+
+    var megabyte = function (bytes) {
+      return (bytes / 1048576).toFixed(1).replace('.', ',') + ' MB';
+    };
+
+    var laeuft = null;
+
+    feld.addEventListener('change', function () {
+      var datei = feld.files && feld.files[0];
+      if (!datei) {
+        melde('');
+        return;
+      }
+
+      // PDFs unangetastet lassen
+      if (datei.type === 'application/pdf' || /\.pdf$/i.test(datei.name || '')) {
+        melde(limit > 0 && datei.size > limit
+          ? 'Das PDF ist mit ' + megabyte(datei.size) + ' zu groß.'
+          : 'PDF, ' + megabyte(datei.size), limit > 0 && datei.size > limit ? 'error' : 'ok');
+        return;
+      }
+
+      melde('Bild wird vorbereitet …');
+      if (knopf) {
+        knopf.disabled = true;
+      }
+
+      laeuft = bildVerkleinern(datei, maxEdge, quality, limit).then(function (fertig) {
+        try {
+          var behaelter = new DataTransfer();
+          behaelter.items.add(fertig);
+          feld.files = behaelter.files;
+        } catch (e) {
+          // Ging nicht – dann eben die Originaldatei, der Server entscheidet
+          fertig = datei;
+        }
+        melde(megabyte(fertig.size) + (fertig.size < datei.size ? ' (verkleinert)' : ''), 'ok');
+      }).catch(function () {
+        melde('');
+      }).then(function () {
+        if (knopf) {
+          knopf.disabled = false;
+        }
+        laeuft = null;
+      });
+    });
+
+    // Wer schneller klickt, als das Bild fertig wird: kurz warten, dann senden
+    form.addEventListener('submit', function (event) {
+      if (!laeuft) {
+        return;
+      }
+      event.preventDefault();
+      laeuft.then(function () {
+        form.submit();
+      });
+    });
+  });
+
+  /* ---------------------------------------- Stammtisch ------------- */
+
+  /*
+   * Vorschau des verknüpften Bildes. Ohne JavaScript bleibt es bei der
+   * Auswahlliste – zum Speichern reicht die völlig aus.
+   */
+  var bildAuswahl = document.querySelector('[data-image-picker]');
+  var bildVorschau = document.getElementById('meal-preview');
+
+  if (bildAuswahl && bildVorschau) {
+    var vorschauBild = bildVorschau.querySelector('img');
+
+    var zeigeVorschau = function () {
+      var option = bildAuswahl.options[bildAuswahl.selectedIndex];
+      var quelle = option ? option.getAttribute('data-thumb') : null;
+
+      if (quelle) {
+        vorschauBild.src = quelle;
+        bildVorschau.hidden = false;
+      } else {
+        vorschauBild.removeAttribute('src');
+        bildVorschau.hidden = true;
+      }
+    };
+
+    bildAuswahl.addEventListener('change', zeigeVorschau);
+    zeigeVorschau();
+  }
 
   /* ---------------------------------------- Lightbox --------------- */
 

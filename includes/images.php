@@ -192,6 +192,7 @@ function image_delete(string $id): bool
     });
 
     likes_remove_for_image($id);
+    meals_unlink_image($id);
 
     return true;
 }

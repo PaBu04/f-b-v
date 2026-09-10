@@ -349,6 +349,18 @@ $zuKlein     = $uploadLimit > 0 && $uploadLimit < 10 * 1024 * 1024;
     <dt>Bildverarbeitung (GD)</dt>
     <dd><?= gd_available() ? 'verfügbar' : 'fehlt – keine Vorschau- und Profilbilder' ?></dd>
     <?php $pushFehler = null; $pushKeys = push_keys($pushFehler); ?>
+    <dt>Geburtstagsgrüße</dt>
+    <dd>
+      <?php if (!BIRTHDAY_NOTIFY): ?>
+        abgeschaltet (BIRTHDAY_NOTIFY in config.php)
+      <?php else: ?>
+        <?php $letzterGruss = birthday_last_notice(); ?>
+        täglich ab <?= (int) BIRTHDAY_NOTIFY_HOUR ?> Uhr, beim ersten Aufruf der Galerie<br>
+        <?= $letzterGruss !== null
+            ? 'zuletzt am ' . h(format_date((string) $letzterGruss['date']))
+            : 'bisher keiner verschickt' ?>
+      <?php endif; ?>
+    </dd>
     <dt>Benachrichtigungen</dt>
     <dd>
       <?php if ($pushKeys !== null): ?>

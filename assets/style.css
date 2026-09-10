@@ -171,7 +171,8 @@ label {
 input[type="text"],
 input[type="password"],
 input[type="date"],
-input[type="email"] {
+input[type="email"],
+select {
   width: 100%;
   padding: .6rem .75rem;
   border: 1px solid var(--border);
@@ -187,7 +188,7 @@ input:focus-visible, button:focus-visible, a:focus-visible, summary:focus-visibl
   outline-offset: 2px;
 }
 
-input[type="text"]:focus, input[type="password"]:focus, input[type="date"]:focus {
+input[type="text"]:focus, input[type="password"]:focus, input[type="date"]:focus, select:focus {
   border-color: var(--accent);
   outline: none;
 }
@@ -663,6 +664,207 @@ label.btn { margin: 0; }
 .avatar-xl { width: 108px; height: 108px; font-size: 2.6rem; }
 
 /* ---------------------------------------------- Mitgliederliste ---- */
+
+/* ---------------------------------------------- Stammtisch --------- */
+
+.board-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .8rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.board-head h2 { margin: 0; }
+
+.podium {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: .7rem;
+  list-style: none;
+  margin: 0 0 1.2rem;
+  padding: 0;
+}
+
+.podium-platz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .25rem;
+  padding: .9rem .6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  text-align: center;
+}
+.podium-1 { background: var(--warn-soft); border-color: var(--warn-text); }
+.podium-rang { font-size: 1.4rem; line-height: 1; }
+.podium-name { font-weight: 700; font-size: .95rem; }
+.podium-punkte { font-size: 1.15rem; font-weight: 700; color: var(--accent-dark); }
+.podium-stufe { font-size: .78rem; color: var(--text-muted); }
+
+.table tr.is-me { background: var(--accent-soft); }
+
+.regeln { margin-top: 1rem; font-size: .88rem; }
+.regeln summary { cursor: pointer; font-weight: 600; color: var(--text-muted); }
+.regeln ul { margin: .7rem 0 0; padding-left: 1.1rem; color: var(--text-muted); }
+.regeln li { margin-bottom: .3rem; }
+
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: .3rem .9rem .9rem;
+  margin: .9rem 0 0;
+  min-width: 0;
+}
+legend { font-size: .86rem; font-weight: 600; padding: 0 .3rem; }
+legend .muted { font-weight: 400; }
+
+.person-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0 .8rem;
+}
+.person-picker .checkbox { margin: .45rem 0; }
+
+.meal-preview { margin: .6rem 0 0; }
+.meal-preview[hidden] { display: none; }
+.meal-preview img {
+  max-height: 110px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+}
+
+.week-head {
+  font-size: .82rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+  margin: 1.6rem 0 .6rem;
+}
+
+.meal-card {
+  display: flex;
+  gap: 1rem;
+  padding: .9rem;
+  margin-bottom: .8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.meal-card.is-editing { border-color: var(--accent); }
+
+.meal-image { flex: 0 0 auto; }
+.meal-image img {
+  width: 120px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 9px;
+  display: block;
+}
+
+.meal-body { flex: 1 1 auto; min-width: 0; }
+
+.meal-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+.meal-head h3 { font-size: 1.05rem; margin: 0; }
+
+.meal-roles {
+  display: grid;
+  grid-template-columns: minmax(88px, auto) 1fr;
+  gap: .2rem .8rem;
+  margin: .6rem 0 0;
+  font-size: .88rem;
+}
+.meal-roles dt { color: var(--text-muted); font-size: .82rem; }
+.meal-roles dd { margin: 0; }
+
+.meal-person {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  margin-right: .5rem;
+  white-space: nowrap;
+}
+
+.meal-points {
+  margin: .6rem 0 0;
+  font-size: .82rem;
+  color: var(--accent-dark);
+}
+
+.meal-recipe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem .7rem;
+  margin-top: .7rem;
+  padding-top: .7rem;
+  border-top: 1px solid var(--border);
+  font-size: .85rem;
+}
+.meal-recipe form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  margin: 0;
+}
+.meal-recipe input[type="file"] {
+  flex: 1 1 150px;
+  min-width: 0;
+  max-width: 100%;
+  font-size: .8rem;
+}
+
+.recipe-note { font-size: .78rem; color: var(--text-muted); }
+.recipe-note.is-ok { color: var(--success); }
+.recipe-note.is-error { color: var(--danger); }
+.recipe-note[hidden] { display: none; }
+
+.meal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  flex-wrap: wrap;
+  margin-top: .7rem;
+}
+.meal-actions { display: flex; gap: .4rem; align-items: center; }
+.meal-actions form { margin: 0; }
+
+@media (max-width: 560px) {
+  .meal-card { flex-direction: column; }
+  .meal-image img { width: 100%; height: 150px; }
+}
+
+/* ---------------------------------------------- Geburtstage -------- */
+
+.birthday-banner {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  flex-wrap: wrap;
+  padding: .7rem .9rem;
+  margin-bottom: 1.2rem;
+  background: var(--warn-soft);
+  color: var(--warn-text);
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  font-size: .92rem;
+}
+
+.birthday-cake { font-size: 1.3rem; line-height: 1; }
+.birthday-text { flex: 1 1 200px; min-width: 0; }
+.birthday-banner .btn { flex: 0 0 auto; }
+
+.member-card.is-birthday { border-color: var(--warn-text); background: var(--warn-soft); }
 
 .member-grid {
   display: grid;

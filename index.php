@@ -28,8 +28,37 @@ $likeNames  = likes_names_map($usersById);
 $myLikes    = likes_of_user((string) $user['id']);
 $returnTo   = 'index.php?filter=' . $filter . '&page=' . $page;
 
+/*
+ * Geburtstage: Der Hinweis steht auf jeder Galerieseite, der Versand der
+ * Benachrichtigung hängt sich hinten an die Antwort (siehe includes/birthdays.php).
+ */
+$geburtstage  = birthdays_today();
+$andereKinder = array_values(array_filter($geburtstage, static function (array $mitglied) use ($user) {
+    return (string) $mitglied['id'] !== (string) $user['id'];
+}));
+$binGefeiert = count($andereKinder) < count($geburtstage);
+
+birthday_schedule_dispatch($geburtstage);
+
 layout_header('Galerie', $user);
 ?>
+<?php if ($geburtstage !== []): ?>
+  <div class="birthday-banner">
+    <span class="birthday-cake" aria-hidden="true">&#127874;</span>
+    <span class="birthday-text">
+      <?php if ($binGefeiert): ?>
+        <strong>Alles Gute zum Geburtstag, <?= h((string) $user['nickname']) ?>!</strong>
+        <?php if ($andereKinder !== []): ?>
+          <?= h(birthday_sentence($andereKinder)) ?>
+        <?php endif; ?>
+      <?php else: ?>
+        <strong><?= h(birthday_sentence($geburtstage)) ?></strong>
+      <?php endif; ?>
+    </span>
+    <a class="btn btn-sm" href="members.php">Mitglieder</a>
+  </div>
+<?php endif; ?>
+
 <section class="toolbar">
   <form method="post" action="upload.php" enctype="multipart/form-data" id="upload-form"
         data-max-edge="<?= IMAGE_MAX_EDGE ?>"
