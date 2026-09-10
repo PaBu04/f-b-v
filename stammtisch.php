@@ -522,7 +522,7 @@ layout_header('Stammtisch', $user);
                 <button type="submit" class="btn btn-sm">Ersetzen</button>
                 <span class="recipe-note" hidden></span>
               </form>
-              <form method="post" onsubmit="return confirm('Rezept wirklich entfernen?');">
+              <form method="post" data-confirm="Rezept wirklich entfernen?">
                 <?= csrf_field() ?>
                 <input type="hidden" name="action" value="recipe_delete">
                 <input type="hidden" name="id" value="<?= h((string) $meal['id']) ?>">
@@ -549,7 +549,7 @@ layout_header('Stammtisch', $user);
           <?php if (meal_may_edit($meal, $user)): ?>
             <span class="meal-actions">
               <a class="btn btn-sm" href="stammtisch.php?bearbeiten=<?= h((string) $meal['id']) ?>#formular">Bearbeiten</a>
-              <form method="post" onsubmit="return confirm('Diesen Eintrag wirklich löschen?');">
+              <form method="post" data-confirm="Diesen Eintrag wirklich löschen?">
                 <?= csrf_field() ?>
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="id" value="<?= h((string) $meal['id']) ?>">
